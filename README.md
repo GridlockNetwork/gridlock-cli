@@ -52,6 +52,8 @@ CLI for quick actions: user creation, wallet creation, wallet actions (sign mess
 
    Replace the baseUrl from [here](https://github.com/GridlockNetwork/gridlock-sdk-cli/blob/24e9a61ee219382ef720b04e8ea0279478a912e7/gridlock-cli.js#L98) with the ngrok link.
 
+   Now you can run:
+
    ```sh
    node gridlock-cli.js help
    ```
