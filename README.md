@@ -20,7 +20,7 @@ CLI for quick actions: user creation, wallet creation, wallet actions (sign mess
 
    [Link to partnerGuardians.js](https://github.com/GridlockNetwork/gridlock-server-nodejs/blob/56314686564358e3c5d8f77590842d9f930bf8d1/src/store/constants/partnerGuardians.js#L115)
 
-   Just add the nodeId and public Key there. Leave the other properties of the objects untouched.
+   Just add the nodeId and public Key there for both partner guardians. Leave the other properties of the objects untouched.
 
 3. **Create a folder on your local machine and clone the gridlock-pg-sdk repository:**
 
@@ -49,6 +49,8 @@ CLI for quick actions: user creation, wallet creation, wallet actions (sign mess
    ```
 
 6. **Run the CLI:**
+
+   Replace the baseUrl from [here](https://github.com/GridlockNetwork/gridlock-sdk-cli/blob/24e9a61ee219382ef720b04e8ea0279478a912e7/gridlock-cli.js#L98) with the ngrok link.
 
    ```sh
    node gridlock-cli.js help
