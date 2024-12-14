@@ -9,11 +9,11 @@ CLI for quick actions: user creation, wallet creation, wallet actions (sign mess
 ## How to run all on staging:
 
 1. **Run partner guardians:**
-
+1)
    ```sh
    docker run --name partner-nodes-1 -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
 ```
-
+2)
 ```sh
    docker run --name partner-nodes-2 -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
 ```
