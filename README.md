@@ -12,9 +12,15 @@ CLI for quick actions: user creation, wallet creation, wallet actions (sign mess
 
    ```sh
    docker run --name partner-nodes-1 -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
-
+```
+```sh
    docker run --name partner-nodes-2 -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
    ```
+
+or folow the logs of an already running container
+```sh
+docker logs -f partner-nodes-1
+```
 
 2. **Grab the public key and nodeId from the docker logs for both partner guardians and add them to the server:**
 
