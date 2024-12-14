@@ -5,5 +5,5 @@ Show any users
 
 Create a user
 ```sh
-node gridlock-cli.js create-user -e testuser1@gridlock.network -p AAAbbb!!!111
+node gridlock-cli.js create-user -e 'testuser1@gridlock.network' -p 'AAAbbb!!!111'
 ```
