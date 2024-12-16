@@ -12,3 +12,8 @@ create wallet
 ```sh
 node gridlock-cli.js create-wallet -c solana-c solana
 ```
+
+list nodes
+```sh
+node gridlock-cli.js list-nodesst-nodes
+```
