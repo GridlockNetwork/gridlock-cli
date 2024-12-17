@@ -55,7 +55,7 @@ const loadUserData = async (action = '') => {
   if (action === COMMANDS.SHOW_SUPPORTED_COINS) return;
   if (action === COMMANDS.CREATE_USER && !fs.existsSync(AUTH_DATA_FILE)) return;
 
-  let spinner = ora('Loading user data...').start();
+  let spinner = ora('Initializing...').start();
 
   if (fs.existsSync(AUTH_DATA_FILE)) {
     // Ensure the file permissions are set to 600
@@ -69,8 +69,8 @@ const loadUserData = async (action = '') => {
 
     user = await gridlock.getUser();
 
-    if (user) spinner.succeed('User data successfully retrieved');
-    else return spinner.fail('Failed to load user data');
+    if (user) spinner.succeed('Connected');
+    else return spinner.fail('No data found');
 
     if (!WALLET_REQUIRED_ACTIONS.includes(action)) return;
 
@@ -95,7 +95,7 @@ const saveUserData = () => {
 const initializeSdk = async (action = '') => {
   gridlock = new GridlockSdk({
     apiKey: '1234567890',
-    baseUrl: 'https://1432-78-96-83-27.ngrok-free.app',
+    baseUrl: 'https://3264-2600-100e-a022-dff3-6f5d-6e0b-576e-5e6f.ngrok-free.app',
     verbose: verbose || false,
   });
 
@@ -160,6 +160,7 @@ const createUser = async (email, password) => {
     } else {
       const spinner = ora('Creating user...').start();
       data = await gridlock.createUser({ email, password });
+      console.log(data);
       if (!data) return spinner.fail('Failed to create user');
       else spinner.succeed('User created successfully');
     }
@@ -245,7 +246,8 @@ const showCurrentUserData = async () => {
   const user = await gridlock.getUser();
   if (!user) return spinner.fail('Failed to retrieve user data');
   spinner.succeed('User data successfully retrieved');
-  console.dir(user, { depth: null });
+  console.log(`Username: ${user.username}`);
+  //console.dir(user, { depth: 0 });
 };
 
 const showWallets = async () => {
