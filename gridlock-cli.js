@@ -51,7 +51,7 @@ let userWallets = null;
 let gridlock = /** @type {GridlockSdk} */ ({});
 let verbose = false;
 
-const loadUserData = async (action = '') => {
+const initUser = async (action = '') => {
   if (action === COMMANDS.SHOW_SUPPORTED_COINS) return;
   if (action === COMMANDS.CREATE_USER && !fs.existsSync(AUTH_DATA_FILE)) return;
 
@@ -62,28 +62,21 @@ const loadUserData = async (action = '') => {
     fs.chmodSync(AUTH_DATA_FILE, 0o600);
 
     authData = JSON.parse(fs.readFileSync(AUTH_DATA_FILE));
-
     const { token, nodeId, nodePublicKey } = authData;
+    const data = await gridlock.refreshToken(token);
 
-    gridlock.refreshRequestHandler(token, nodeId, nodePublicKey);
-
-    user = await gridlock.getUser();
-
-    if (user) spinner.succeed('Connected');
-    else return spinner.fail('No data found');
-
-    if (!WALLET_REQUIRED_ACTIONS.includes(action)) return;
-
-    spinner = ora('Retrieving user wallets...').start();
-
-    userWallets = await gridlock.getWallets();
-
-    if (!userWallets) return spinner.fail('Failed to retrieve user wallets');
-    else spinner.succeed('User wallets successfully retrieved');
+    if (data) {
+      authData = { token: data.token, nodeId: data.user.nodeId, nodePublicKey: data.user.nodePublicKey };
+      saveUserData(authData);
+      spinner.succeed('Connected');
+    } else {
+      spinner.fail('Authentication failed');
+      process.exit(1);
+    }
   } else spinner.info('No auth data found');
 };
 
-const saveUserData = () => {
+const saveUserData = (authData) => {
   const dir = path.dirname(AUTH_DATA_FILE);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { mode: 0o700 });
@@ -99,7 +92,7 @@ const initializeSdk = async (action = '') => {
     verbose: verbose || false,
   });
 
-  await loadUserData(action);
+  await initUser(action);
 };
 
 const logout = () => {
@@ -117,10 +110,10 @@ const logout = () => {
 };
 
 const checkUserExistence = (command) => {
-  if (!(user && authData.token) && command !== COMMANDS.CREATE_USER) {
-    console.error('No user found. Please create a user first using the "create-user" command.');
-    process.exit(1);
-  }
+  //if (!(user && authData.token) && command !== COMMANDS.CREATE_USER) {
+  //  console.error('No user found. Please create a user first using the "create-user" command.');
+  //  process.exit(1);
+  //}
 };
 
 const withUserCheck = (command, action) => {
@@ -172,8 +165,8 @@ const createUser = async (email, password) => {
 
     prettyLog({ email, nodeId, nodePublicKey });
 
-    authData = { nodeId, nodePublicKey, token };
-    saveUserData();
+    authData = { token, nodeId, nodePublicKey };
+    saveUserData(authData);
   } catch (error) {
     if (error.errors) console.error(error.errors.join('\n'));
     else console.error(error.message);
@@ -241,7 +234,7 @@ const listNetworkNodes = async () => {
   console.dir(nodes, { depth: null });
 };
 
-const showCurrentUserData = async () => {
+const showUserData = async () => {
   const spinner = ora('Retrieving user data...').start();
   const user = await gridlock.getUser();
   if (!user) return spinner.fail('Failed to retrieve user data');
@@ -335,7 +328,7 @@ program
 program
   .command(COMMANDS.SHOW_USER)
   .description('Show current user data')
-  .action(withUserCheck(COMMANDS.SHOW_USER, showCurrentUserData));
+  .action(withUserCheck(COMMANDS.SHOW_USER, showUserData));
 
 program
   .command(COMMANDS.CREATE_WALLET)
