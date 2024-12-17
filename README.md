@@ -1,4 +1,4 @@
-# Gridlock SDK CLI
+# Gridlock CLI
 
 CLI for quick actions: user creation, wallet creation, wallet actions (sign message, verify message), verify user network etc.
 
