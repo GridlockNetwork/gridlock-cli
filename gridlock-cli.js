@@ -185,17 +185,11 @@ const createWallet = async (email, coinTypes) => {
     process.exit(1);
   }
 
-  console.log('SDK initialized.');
-
-  console.log('User initialized.');
-
   const plural = coinTypes.length > 1 ? 's' : '';
-  console.log(`Creating ${coinTypes.join(' and ')} wallet${plural}...`);
 
   const spinner = ora(`Creating ${coinTypes.join(' and ')} wallet${plural}...`).start();
 
   userWallets = await gridlock.createWallets(coinTypes);
-  console.log('Wallet creation response:', userWallets);
 
   if (!userWallets) {
     spinner.fail(`Failed to create ${coinTypes} wallet`);
@@ -206,12 +200,15 @@ const createWallet = async (email, coinTypes) => {
         .map((type) => type.charAt(0).toUpperCase() + type.slice(1))
         .join(' and ')} wallet${plural} created successfully!`
     );
-    console.log(`${coinTypes.join(' and ')} wallet${plural} created successfully!`);
+
     userWallets
       .filter((wallet) => coinTypes.find((coinType) => coinType === wallet.coinType))
       .forEach((wallet) => {
-        prettyLog({ coinType: wallet.coinType, address: wallet.address });
-        console.log('Wallet details:', { coinType: wallet.coinType, address: wallet.address });
+        if (verbose) {
+          console.log('Wallet details:', wallet);
+        } else {
+          prettyLog({ coinType: wallet.coinType, address: wallet.address });
+        }
       });
   }
 };
@@ -422,7 +419,6 @@ program.option('-v, --verbose', 'Enable verbose output').hook('preAction', async
   const commandName = thisCommand.args[0];
 });
 
-
 program
   .command(COMMANDS.CREATE_USER)
   .description('Create a new user')
@@ -456,6 +452,15 @@ program
   });
 
 program
+  .command(COMMANDS.SHOW_WALLETS)
+  .description('Show user wallets')
+  .requiredOption('-e, --email <email>', 'User email')
+  .action((options) => {
+    const email = options.email;
+    withUserCheck(COMMANDS.SHOW_WALLETS, () => showWallets(email))();
+  });
+
+program
   .command(COMMANDS.SIGN_MESSAGE)
   .description('Sign a message')
   .requiredOption('-e, --email <email>', 'User email')
@@ -472,6 +477,22 @@ program
     }
 
     withUserAndWalletCheck(COMMANDS.SIGN_MESSAGE, () => signMessage(email, message, coinType))(options);
+  });
+
+program
+  .command(COMMANDS.VERIFY_MESSAGE)
+  .description('Verify a signed message')
+  .requiredOption('-e, --email <email>', 'User email')
+  .requiredOption('-m, --message <message>', 'Message to verify')
+  .requiredOption('-s, --signature <signature>', 'Signature to verify')
+  .requiredOption('-c, --coinType <coinType>', `Specify the coin type ${SUPPORTED_COINS_STRING}`)
+  .action((options) => {
+    const email = options.email;
+    const coinType = verifyOptionCoinType(options);
+
+    withUserAndWalletCheck(COMMANDS.VERIFY_MESSAGE, () => {
+      verifyMessage(email, coinType, options.message, options.signature);
+    })(options);
   });
 
 program
@@ -496,45 +517,6 @@ program
   });
 
 program
-  .command(COMMANDS.SHOW_WALLETS)
-  .description('Show user wallets')
-  .requiredOption('-e, --email <email>', 'User email')
-  .action((options) => {
-    const email = options.email;
-    withUserCheck(COMMANDS.SHOW_WALLETS, () => showWallets(email))();
-  });
-
-program
-  .command(COMMANDS.DELETE_USER)
-  .description('Delete current user')
-  .requiredOption('-e, --email <email>', 'User email')
-  .action((options) => {
-    const email = options.email;
-    withUserCheck(COMMANDS.DELETE_USER, () => deleteUser(email))();
-  });
-
-program
-  .command(COMMANDS.SHOW_SUPPORTED_COINS)
-  .description('Show supported coins')
-  .action(showSupportedCoins);
-
-program
-  .command(COMMANDS.VERIFY_MESSAGE)
-  .description('Verify a signed message')
-  .requiredOption('-e, --email <email>', 'User email')
-  .requiredOption('-m, --message <message>', 'Message to verify')
-  .requiredOption('-s, --signature <signature>', 'Signature to verify')
-  .requiredOption('-c, --coinType <coinType>', `Specify the coin type ${SUPPORTED_COINS_STRING}`)
-  .action((options) => {
-    const email = options.email;
-    const coinType = verifyOptionCoinType(options);
-
-    withUserAndWalletCheck(COMMANDS.VERIFY_MESSAGE, () => {
-      verifyMessage(email, coinType, options.message, options.signature);
-    })(options);
-  });
-
-program
   .command(COMMANDS.ADD_GUARDIAN)
   .description('Add a guardian')
   .requiredOption('-e, --email <email>', 'User email')
@@ -551,7 +533,7 @@ program
     withUserCheck(COMMANDS.ADD_GUARDIAN, () => addGuardian(email, name))();
   });
 
-  program
+program
   .command(COMMANDS.LIST_NODES)
   .description('List network nodes')
   .requiredOption('-e, --email <email>', 'User email')
@@ -559,5 +541,19 @@ program
     const email = options.email;
     withUserCheck(COMMANDS.LIST_NODES, () => listNetworkNodes(email))();
   });
+
+program
+  .command(COMMANDS.DELETE_USER)
+  .description('Delete current user')
+  .requiredOption('-e, --email <email>', 'User email')
+  .action((options) => {
+    const email = options.email;
+    withUserCheck(COMMANDS.DELETE_USER, () => deleteUser(email))();
+  });
+
+program
+  .command(COMMANDS.SHOW_SUPPORTED_COINS)
+  .description('Show supported coins')
+  .action(showSupportedCoins);
 
 program.parse(process.argv);
