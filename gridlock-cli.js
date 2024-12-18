@@ -14,7 +14,7 @@ import {
   SUPPORTED_COINS_STRING,
   WALLET_REQUIRED_ACTIONS,
 } from './constants.js';
-import { green, prettyLog } from './helpers.js';
+import { red, green, prettyLog } from './helpers.js';
 
 const verifyOptionCoinType = (options) => {
   const coinTypes = options.coinTypes || [options.coinType];
@@ -187,7 +187,8 @@ const signMessage = async (email, message, coinType) => {
     process.exit(1);
   }
 
-  const wallet = userWallets.find((wallet) => wallet.coinType === coinType);
+  const wallets = await gridlock.getWallets();
+  const wallet = wallets.find((wallet) => wallet.coinType === coinType);
 
   const spinner = ora(`Signing message using ${coinType} wallet...`).start();
 
@@ -213,17 +214,28 @@ const verifyMessage = async (email, coinType, message, signature) => {
     process.exit(1);
   }
 
-  const wallet = userWallets.find((wallet) => wallet.coinType === coinType);
+  const wallets = await gridlock.getWallets();
+  const wallet = wallets.find((wallet) => wallet.coinType === coinType);
 
   const spinner = ora('Verifying message...').start();
 
   const isValid = await gridlock.verifySignature(coinType, message, signature, wallet.address);
 
-  if (isValid === null) return spinner.fail('Failed to verify message');
-  if (!isValid) return spinner.fail('Message verified: Invalid');
-  spinner.succeed(`Message verified: ${green('Valid')}`);
+  if (isValid === null) {
+    spinner.fail('Failed to verify message');
+  } else if (!isValid) {
+    spinner.fail(`Message is: ${red('Invalid')}`);
+  } else {
+    spinner.succeed(`Message is: ${green('Valid')}`);
+  }
+
   if (verbose) {
-    console.log('Verification result:', isValid);
+    prettyLog({
+      verificationResult: isValid,
+      message,
+      signature,
+      walletAddress: wallet.address,
+    });
   }
 };
 
@@ -362,11 +374,13 @@ const signTransaction = async (email, transaction, coinType) => {
 
   console.warn('WARNING: DEVELOPMENT IN PROGRESS. MIGHT NOT WORK AS EXPECTED');
 
-  const wallet = userWallets.find((wallet) => wallet.coinType === coinType);
+  const wallets = await gridlock.getWallets();
+  const wallet = wallets.find((wallet) => wallet.coinType === coinType);
 
   const spinner = ora(`Signing transaction using ${coinType} wallet...`).start();
 
   const resp = await gridlock.signSerializedTx(transaction, coinType);
+  console.log('resp', resp);
 
   if (resp && resp.signedTx) {
     spinner.succeed('Transaction signed successfully');
