@@ -470,12 +470,6 @@ program
     const email = options.email;
     const coinType = verifyOptionCoinType(options);
     const message = options.message;
-
-    if (message.length === 0) {
-      console.error('Message cannot be empty');
-      process.exit(1);
-    }
-
     withUserAndWalletCheck(COMMANDS.SIGN_MESSAGE, () => signMessage(email, message, coinType))(options);
   });
 
