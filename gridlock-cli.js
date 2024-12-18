@@ -107,40 +107,6 @@ const logout = () => {
   }
 };
 
-const checkUserExistence = (command) => {
-  //if (!(user && authData.token) && command !== COMMANDS.CREATE_USER) {
-  //  console.error('No user found. Please create a user first using the "create-user" command.');
-  //  process.exit(1);
-  //}
-};
-
-const withUserCheck = (command, action) => {
-  return (...args) => {
-    checkUserExistence(command);
-    action(...args);
-  };
-};
-
-const withWalletCheck = (command, action) => {
-  return (options, ...args) => {
-    const coinType = options.coinType;
-    if (
-      (!userWallets || !userWallets.find((wallet) => wallet.coinType === coinType)) &&
-      command !== COMMANDS.CREATE_WALLET
-    ) {
-      console.error(
-        `No ${coinType} wallet found. Please create a wallet first using the "create-wallet" command.`
-      );
-      process.exit(1);
-    }
-    action(...args);
-  };
-};
-
-const withUserAndWalletCheck = (command, action) => {
-  return withUserCheck(command, withWalletCheck(command, action));
-};
-
 const createUser = async (email, password) => {
   initializeSdk();
   try {
@@ -430,10 +396,7 @@ program
   .command(COMMANDS.SHOW_USER)
   .description('Show data for given user')
   .requiredOption('-e, --email <email>', 'User email')
-  .action((options) => {
-    const email = options.email;
-    withUserCheck(COMMANDS.SHOW_USER, () => showUserData(email))();
-  });
+  .action((options) => showUserData(options.email));
 
 program
   .command(COMMANDS.CREATE_WALLET)
@@ -448,17 +411,14 @@ program
     const result = verifyOptionCoinType(options);
     const coinTypes = Array.isArray(result) ? result : [result];
 
-    withUserCheck(COMMANDS.CREATE_WALLET, () => createWallet(email, coinTypes))();
+    createWallet(email, coinTypes);
   });
 
 program
   .command(COMMANDS.SHOW_WALLETS)
   .description('Show user wallets')
   .requiredOption('-e, --email <email>', 'User email')
-  .action((options) => {
-    const email = options.email;
-    withUserCheck(COMMANDS.SHOW_WALLETS, () => showWallets(email))();
-  });
+  .action((options) => showWallets(options.email));
 
 program
   .command(COMMANDS.SIGN_MESSAGE)
@@ -470,7 +430,8 @@ program
     const email = options.email;
     const coinType = verifyOptionCoinType(options);
     const message = options.message;
-    withUserAndWalletCheck(COMMANDS.SIGN_MESSAGE, () => signMessage(email, message, coinType))(options);
+
+    signMessage(email, message, coinType);
   });
 
 program
@@ -484,9 +445,7 @@ program
     const email = options.email;
     const coinType = verifyOptionCoinType(options);
 
-    withUserAndWalletCheck(COMMANDS.VERIFY_MESSAGE, () => {
-      verifyMessage(email, coinType, options.message, options.signature);
-    })(options);
+    verifyMessage(email, coinType, options.message, options.signature);
   });
 
 program
@@ -505,9 +464,7 @@ program
       process.exit(1);
     }
 
-    withUserAndWalletCheck(COMMANDS.SIGN_SERIALIZED_TX, () =>
-      signTransaction(email, transaction, coinType)
-    )(options);
+    signTransaction(email, transaction, coinType);
   });
 
 program
@@ -524,26 +481,20 @@ program
       process.exit(1);
     }
 
-    withUserCheck(COMMANDS.ADD_GUARDIAN, () => addGuardian(email, name))();
+    addGuardian(email, name);
   });
 
 program
   .command(COMMANDS.LIST_NODES)
   .description('List network nodes')
   .requiredOption('-e, --email <email>', 'User email')
-  .action((options) => {
-    const email = options.email;
-    withUserCheck(COMMANDS.LIST_NODES, () => listNetworkNodes(email))();
-  });
+  .action((options) => listNetworkNodes(options.email));
 
 program
   .command(COMMANDS.DELETE_USER)
   .description('Delete current user')
   .requiredOption('-e, --email <email>', 'User email')
-  .action((options) => {
-    const email = options.email;
-    withUserCheck(COMMANDS.DELETE_USER, () => deleteUser(email))();
-  });
+  .action((options) => deleteUser(options.email));
 
 program
   .command(COMMANDS.SHOW_SUPPORTED_COINS)
