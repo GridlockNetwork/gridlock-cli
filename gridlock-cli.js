@@ -9,7 +9,7 @@ import * as yup from 'yup';
 import path from 'path';
 
 import {
-  AUTH_DATA_FILE,
+  getAuthDataFilePath,
   COMMANDS,
   SUPPORTED_COINS_STRING,
   WALLET_REQUIRED_ACTIONS,
@@ -36,10 +36,6 @@ const userSchema = yup.object().shape({
   email: yup.string().email('Invalid email format').required('Email is required'),
   password: yup
     .string()
-    .matches(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[@$!%*?&#]).{8,}$/,
-      'Password must be at least 8 characters long and contain at least one lowercase letter, one uppercase letter, one number, and one special character'
-    )
     .required('Password is required'),
 });
 
@@ -51,56 +47,58 @@ let userWallets = null;
 let gridlock = /** @type {GridlockSdk} */ ({});
 let verbose = false;
 
-const initUser = async (action = '') => {
-  if (action === COMMANDS.SHOW_SUPPORTED_COINS) return;
-  if (action === COMMANDS.CREATE_USER && !fs.existsSync(AUTH_DATA_FILE)) return;
-
+const initUser = async (email) => {
   let spinner = ora('Initializing...').start();
 
-  if (fs.existsSync(AUTH_DATA_FILE)) {
+  const authDataFilePath = getAuthDataFilePath(email);
+  if (fs.existsSync(authDataFilePath)) {
     // Ensure the file permissions are set to 600
-    fs.chmodSync(AUTH_DATA_FILE, 0o600);
+    fs.chmodSync(authDataFilePath, 0o600);
 
-    authData = JSON.parse(fs.readFileSync(AUTH_DATA_FILE));
-    const { token, nodeId, nodePublicKey } = authData;
+    authData = JSON.parse(fs.readFileSync(authDataFilePath));
+    const { token, nodeId, nodePublicKey, userId } = authData;
     const data = await gridlock.refreshToken(token);
 
     if (data) {
-      authData = { token: data.token, nodeId: data.user.nodeId, nodePublicKey: data.user.nodePublicKey };
+      authData = { email, userId, token: data.token, nodeId: data.user.nodeId, nodePublicKey: data.user.nodePublicKey };
       saveUserData(authData);
       spinner.succeed('Connected');
+      return true;
     } else {
       spinner.fail('Authentication failed');
-      process.exit(1);
+      return 'Authentication failed';
     }
-  } else spinner.info('No auth data found');
+  } else {
+    spinner.fail('No auth data found');
+    return 'No auth data found';
+  }
 };
 
 const saveUserData = (authData) => {
-  const dir = path.dirname(AUTH_DATA_FILE);
+  const authDataFilePath = getAuthDataFilePath(authData.email);
+  const dir = path.dirname(authDataFilePath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { mode: 0o700 });
   }
-  fs.writeFileSync(AUTH_DATA_FILE, JSON.stringify(authData, null, 2));
-  fs.chmodSync(AUTH_DATA_FILE, 0o600);
+  fs.writeFileSync(authDataFilePath, JSON.stringify(authData, null, 2));
+  fs.chmodSync(authDataFilePath, 0o600);
 };
 
-const initializeSdk = async (action = '') => {
+const initializeSdk = async () => {
   gridlock = new GridlockSdk({
     apiKey: '1234567890',
     baseUrl: 'https://3264-2600-100e-a022-dff3-6f5d-6e0b-576e-5e6f.ngrok-free.app',
     verbose: verbose || false,
   });
-
-  await initUser(action);
 };
 
 const logout = () => {
+  const authDataFilePath = getAuthDataFilePath(authData.email);
   const spinner = ora('Deleting local data...').start();
   try {
-    if (fs.existsSync(AUTH_DATA_FILE)) {
-      fs.unlinkSync(AUTH_DATA_FILE);
-      const dir = path.dirname(AUTH_DATA_FILE);
+    if (fs.existsSync(authDataFilePath)) {
+      fs.unlinkSync(authDataFilePath);
+      const dir = path.dirname(authDataFilePath);
       fs.rmdirSync(dir);
     }
     spinner.succeed('Logged out successfully');
@@ -144,6 +142,7 @@ const withUserAndWalletCheck = (command, action) => {
 };
 
 const createUser = async (email, password) => {
+  initializeSdk();
   try {
     let data = null;
     await userSchema.validate({ email, password });
@@ -153,19 +152,23 @@ const createUser = async (email, password) => {
     } else {
       const spinner = ora('Creating user...').start();
       data = await gridlock.createUser({ email, password });
-      console.log(data);
       if (!data) return spinner.fail('Failed to create user');
       else spinner.succeed('User created successfully');
     }
 
     user = data.user;
+    const userId = data.user._id;
     const token = data.token;
     const nodeId = user.nodeId;
     const nodePublicKey = user.nodePool.find((node) => node.nodeId === nodeId).publicKey;
 
-    prettyLog({ email, nodeId, nodePublicKey });
+    if (verbose) {
+      console.log('User data:', user);
+    } else {
+      prettyLog({ email, nodeId, nodePublicKey });
+    }
 
-    authData = { token, nodeId, nodePublicKey };
+    authData = { email, userId, token, nodeId, nodePublicKey };
     saveUserData(authData);
   } catch (error) {
     if (error.errors) console.error(error.errors.join('\n'));
@@ -174,30 +177,53 @@ const createUser = async (email, password) => {
   }
 };
 
-const createWallet = async (coinTypes) => {
+const createWallet = async (email, coinTypes) => {
+  await initializeSdk();
+  const initResult = await initUser(email);
+  if (initResult !== true) {
+    console.error(initResult);
+    process.exit(1);
+  }
+
+  console.log('SDK initialized.');
+
+  console.log('User initialized.');
+
   const plural = coinTypes.length > 1 ? 's' : '';
+  console.log(`Creating ${coinTypes.join(' and ')} wallet${plural}...`);
 
   const spinner = ora(`Creating ${coinTypes.join(' and ')} wallet${plural}...`).start();
 
   userWallets = await gridlock.createWallets(coinTypes);
+  console.log('Wallet creation response:', userWallets);
 
   if (!userWallets) {
     spinner.fail(`Failed to create ${coinTypes} wallet`);
+    console.error(`Failed to create ${coinTypes} wallet`);
   } else {
     spinner.succeed(
       `${coinTypes
         .map((type) => type.charAt(0).toUpperCase() + type.slice(1))
         .join(' and ')} wallet${plural} created successfully!`
     );
+    console.log(`${coinTypes.join(' and ')} wallet${plural} created successfully!`);
     userWallets
       .filter((wallet) => coinTypes.find((coinType) => coinType === wallet.coinType))
       .forEach((wallet) => {
         prettyLog({ coinType: wallet.coinType, address: wallet.address });
+        console.log('Wallet details:', { coinType: wallet.coinType, address: wallet.address });
       });
   }
 };
 
-const signMessage = async (message, coinType) => {
+const signMessage = async (email, message, coinType) => {
+  await initializeSdk();
+  const initResult = await initUser(email);
+  if (initResult !== true) {
+    console.error(initResult);
+    process.exit(1);
+  }
+
   const wallet = userWallets.find((wallet) => wallet.coinType === coinType);
 
   const spinner = ora(`Signing message using ${coinType} wallet...`).start();
@@ -206,16 +232,25 @@ const signMessage = async (message, coinType) => {
 
   if (resp && resp.signature) {
     spinner.succeed('Message signed successfully');
-    prettyLog({ message, walletAddress: wallet.address, signature: resp.signature });
+    if (verbose) {
+      console.log('Signed message response:', resp);
+    } else {
+      prettyLog({ message, walletAddress: wallet.address, signature: resp.signature });
+    }
   } else {
     spinner.fail('Failed to sign message');
   }
 };
 
-const verifyMessage = async (coinType, message, signature) => {
-  const wallet = userWallets.find((wallet) => wallet.coinType === coinType);
+const verifyMessage = async (email, coinType, message, signature) => {
+  await initializeSdk();
+  const initResult = await initUser(email);
+  if (initResult !== true) {
+    console.error(initResult);
+    process.exit(1);
+  }
 
-  // prettyLog({ message, signature, walletAddress: wallet.address });
+  const wallet = userWallets.find((wallet) => wallet.coinType === coinType);
 
   const spinner = ora('Verifying message...').start();
 
@@ -224,36 +259,88 @@ const verifyMessage = async (coinType, message, signature) => {
   if (isValid === null) return spinner.fail('Failed to verify message');
   if (!isValid) return spinner.fail('Message verified: Invalid');
   spinner.succeed(`Message verified: ${green('Valid')}`);
+  if (verbose) {
+    console.log('Verification result:', isValid);
+  }
 };
 
-const listNetworkNodes = async () => {
+const listNetworkNodes = async (email) => {
+  await initializeSdk();
+  const initResult = await initUser(email);
+  if (initResult !== true) {
+    console.error(initResult);
+    process.exit(1);
+  }
+
   const spinner = ora('Retrieving network nodes...').start();
   const nodes = await gridlock.getNodes();
   if (!nodes) return spinner.fail('Failed to retrieve network nodes');
   spinner.succeed('Network nodes successfully retrieved');
-  console.dir(nodes, { depth: null });
+  if (verbose) {
+    console.log('Network nodes:', nodes);
+  } else {
+    console.dir(nodes, { depth: null });
+  }
 };
 
-const showUserData = async () => {
+const showUserData = async (email) => {
+  await initializeSdk();
+  const initResult = await initUser(email);
+  if (initResult !== true) {
+    console.error(initResult);
+    process.exit(1);
+  }
+
   const spinner = ora('Retrieving user data...').start();
   const user = await gridlock.getUser();
   if (!user) return spinner.fail('Failed to retrieve user data');
   spinner.succeed('User data successfully retrieved');
-  console.log(`Username: ${user.username}`);
-  //console.dir(user, { depth: 0 });
+  if (verbose) {
+    console.log('User data:', user);
+  } else {
+    prettyLog({ email: user.email });
+  }
 };
 
-const showWallets = async () => {
-  if (!userWallets) return;
+const showWallets = async (email) => {
+  await initializeSdk();
+  const initResult = await initUser(email);
+  if (initResult !== true) {
+    console.error(initResult);
+    process.exit(1);
+  }
 
-  if (userWallets.length === 0) return ora(`No wallets found`).info();
+  const spinner = ora('Retrieving wallet data...').start();
 
-  userWallets.forEach((wallet) => {
-    prettyLog({ coinType: wallet.coinType, address: wallet.address });
-  });
+  userWallets = await gridlock.getWallets();
+  if (!userWallets) {
+    spinner.fail('No user wallets found.');
+    return;
+  }
+
+  if (userWallets.length === 0) {
+    spinner.info('No wallets found.');
+    return;
+  }
+
+  spinner.succeed('Wallet data retrieved successfully');
+  if (verbose) {
+    console.log('User wallets:', userWallets);
+  } else {
+    userWallets.forEach((wallet) => {
+      prettyLog({ coinType: wallet.coinType, address: wallet.address });
+    });
+  }
 };
 
-const deleteUser = async () => {
+const deleteUser = async (email) => {
+  await initializeSdk();
+  const initResult = await initUser(email);
+  if (initResult !== true) {
+    console.error(initResult);
+    process.exit(1);
+  }
+
   const spinner = ora('Deleting user...').start();
   const resp = await gridlock.deleteUser();
   if (!resp) return spinner.fail('Failed to delete user');
@@ -265,7 +352,14 @@ const showSupportedCoins = () => {
   prettyLog(SUPPORTED_COINS, { onlyValues: true });
 };
 
-const addGuardian = async (name) => {
+const addGuardian = async (email, name) => {
+  await initializeSdk();
+  const initResult = await initUser(email);
+  if (initResult !== true) {
+    console.error(initResult);
+    process.exit(1);
+  }
+
   const spinner = ora('Adding guardian...').start();
   const data = await gridlock.addUserGuardian({ name });
 
@@ -295,7 +389,14 @@ const addGuardian = async (name) => {
   }
 };
 
-const signTransaction = async (transaction, coinType) => {
+const signTransaction = async (email, transaction, coinType) => {
+  await initializeSdk();
+  const initResult = await initUser(email);
+  if (initResult !== true) {
+    console.error(initResult);
+    process.exit(1);
+  }
+
   console.warn('WARNING: DEVELOPMENT IN PROGRESS. MIGHT NOT WORK AS EXPECTED');
 
   const wallet = userWallets.find((wallet) => wallet.coinType === coinType);
@@ -306,7 +407,11 @@ const signTransaction = async (transaction, coinType) => {
 
   if (resp && resp.signedTx) {
     spinner.succeed('Transaction signed successfully');
-    prettyLog({ message, walletAddress: wallet.address, signedTransaction: resp.signedTx });
+    if (verbose) {
+      console.log('Signed transaction response:', resp);
+    } else {
+      prettyLog({ message, walletAddress: wallet.address, signedTransaction: resp.signedTx });
+    }
   } else {
     spinner.fail('Failed to sign transaction');
   }
@@ -315,8 +420,8 @@ const signTransaction = async (transaction, coinType) => {
 program.option('-v, --verbose', 'Enable verbose output').hook('preAction', async (thisCommand) => {
   verbose = thisCommand.opts().verbose;
   const commandName = thisCommand.args[0];
-  await initializeSdk(commandName);
 });
+
 
 program
   .command(COMMANDS.CREATE_USER)
@@ -327,34 +432,37 @@ program
 
 program
   .command(COMMANDS.SHOW_USER)
-  .description('Show current user data')
-  .action(withUserCheck(COMMANDS.SHOW_USER, showUserData));
+  .description('Show data for given user')
+  .requiredOption('-e, --email <email>', 'User email')
+  .action((options) => {
+    const email = options.email;
+    withUserCheck(COMMANDS.SHOW_USER, () => showUserData(email))();
+  });
 
 program
   .command(COMMANDS.CREATE_WALLET)
   .description('Create new wallet')
+  .requiredOption('-e, --email <email>', 'User email')
   .requiredOption(
     '-c, --coinTypes <coinTypes...>',
     `Specify the coin type(s) (${SUPPORTED_COINS_STRING})`
   )
   .action((options) => {
+    const email = options.email;
     const result = verifyOptionCoinType(options);
     const coinTypes = Array.isArray(result) ? result : [result];
 
-    withUserCheck(COMMANDS.CREATE_WALLET, () => createWallet(coinTypes))();
+    withUserCheck(COMMANDS.CREATE_WALLET, () => createWallet(email, coinTypes))();
   });
-
-program
-  .command(COMMANDS.LIST_NODES)
-  .description('List network nodes')
-  .action(withUserCheck(COMMANDS.LIST_NODES, listNetworkNodes));
 
 program
   .command(COMMANDS.SIGN_MESSAGE)
   .description('Sign a message')
+  .requiredOption('-e, --email <email>', 'User email')
   .requiredOption('-m, --message <message>', 'Message to sign')
   .requiredOption('-c, --coinType <coinType>', `Specify the coin type (${SUPPORTED_COINS_STRING})`)
   .action((options) => {
+    const email = options.email;
     const coinType = verifyOptionCoinType(options);
     const message = options.message;
 
@@ -363,15 +471,17 @@ program
       process.exit(1);
     }
 
-    withUserAndWalletCheck(COMMANDS.SIGN_MESSAGE, () => signMessage(message, coinType))(options);
+    withUserAndWalletCheck(COMMANDS.SIGN_MESSAGE, () => signMessage(email, message, coinType))(options);
   });
 
 program
   .command(COMMANDS.SIGN_SERIALIZED_TX)
   .description('Sign a serialized transaction (Development in progress)')
+  .requiredOption('-e, --email <email>', 'User email')
   .requiredOption('-t, --transaction <transaction>', 'Transaction to sign')
   .requiredOption('-c, --coinType <coinType>', `Specify the coin type (${SUPPORTED_COINS_STRING})`)
   .action((options) => {
+    const email = options.email;
     const coinType = verifyOptionCoinType(options);
     const transaction = options.transaction;
 
@@ -381,19 +491,27 @@ program
     }
 
     withUserAndWalletCheck(COMMANDS.SIGN_SERIALIZED_TX, () =>
-      signTransaction(transaction, coinType)
+      signTransaction(email, transaction, coinType)
     )(options);
   });
 
 program
   .command(COMMANDS.SHOW_WALLETS)
   .description('Show user wallets')
-  .action(withUserCheck(COMMANDS.SHOW_WALLETS, showWallets));
+  .requiredOption('-e, --email <email>', 'User email')
+  .action((options) => {
+    const email = options.email;
+    withUserCheck(COMMANDS.SHOW_WALLETS, () => showWallets(email))();
+  });
 
 program
   .command(COMMANDS.DELETE_USER)
   .description('Delete current user')
-  .action(withUserCheck(COMMANDS.DELETE_USER, deleteUser));
+  .requiredOption('-e, --email <email>', 'User email')
+  .action((options) => {
+    const email = options.email;
+    withUserCheck(COMMANDS.DELETE_USER, () => deleteUser(email))();
+  });
 
 program
   .command(COMMANDS.SHOW_SUPPORTED_COINS)
@@ -403,22 +521,26 @@ program
 program
   .command(COMMANDS.VERIFY_MESSAGE)
   .description('Verify a signed message')
+  .requiredOption('-e, --email <email>', 'User email')
   .requiredOption('-m, --message <message>', 'Message to verify')
   .requiredOption('-s, --signature <signature>', 'Signature to verify')
   .requiredOption('-c, --coinType <coinType>', `Specify the coin type ${SUPPORTED_COINS_STRING}`)
   .action((options) => {
+    const email = options.email;
     const coinType = verifyOptionCoinType(options);
 
     withUserAndWalletCheck(COMMANDS.VERIFY_MESSAGE, () => {
-      verifyMessage(coinType, options.message, options.signature);
+      verifyMessage(email, coinType, options.message, options.signature);
     })(options);
   });
 
 program
   .command(COMMANDS.ADD_GUARDIAN)
   .description('Add a guardian')
+  .requiredOption('-e, --email <email>', 'User email')
   .requiredOption('-n, --name <name>', "Guardian's name")
   .action((options) => {
+    const email = options.email;
     const name = options.name;
 
     if (name.length === 0) {
@@ -426,7 +548,16 @@ program
       process.exit(1);
     }
 
-    withUserCheck(COMMANDS.ADD_GUARDIAN, () => addGuardian(name))();
+    withUserCheck(COMMANDS.ADD_GUARDIAN, () => addGuardian(email, name))();
+  });
+
+  program
+  .command(COMMANDS.LIST_NODES)
+  .description('List network nodes')
+  .requiredOption('-e, --email <email>', 'User email')
+  .action((options) => {
+    const email = options.email;
+    withUserCheck(COMMANDS.LIST_NODES, () => listNetworkNodes(email))();
   });
 
 program.parse(process.argv);

@@ -43,4 +43,7 @@ export const SUPPORTED_COINS_STRING =
     : SUPPORTED_COINS[0];
 
 const AUTH_DIR = path.join(os.homedir(), '.gridlock-cli');
-export const AUTH_DATA_FILE = path.join(AUTH_DIR, 'auth.json');
+export const getAuthDataFilePath = (email) => {
+  const sanitizedEmail = email.replace(/@/g, '-').replace(/\./g, '_');
+  return path.join(AUTH_DIR, `auth_${sanitizedEmail}.json`);
+};
