@@ -57,7 +57,7 @@ const initUser = async (email) => {
 
     authData = JSON.parse(fs.readFileSync(authDataFilePath));
     const { token, nodeId, nodePublicKey, userId } = authData;
-    const data = await gridlock.refreshToken(token);
+    const data = await gridlock.refreshToken(token, { verbose });
 
     if (data) {
       authData = { email, userId, token: data.token, nodeId: data.user.nodeId, nodePublicKey: data.user.nodePublicKey };
@@ -117,7 +117,7 @@ const createUser = async (email, password) => {
       data = { user, ...authData };
     } else {
       const spinner = ora('Creating user...').start();
-      data = await gridlock.createUser({ email, password });
+      data = await gridlock.createUser({ email, password }, { verbose });
       if (!data) return spinner.fail('Failed to create user');
       else spinner.succeed('User created successfully');
     }
@@ -155,7 +155,7 @@ const createWallet = async (email, coinTypes) => {
 
   const spinner = ora(`Creating ${coinTypes.join(' and ')} wallet${plural}...`).start();
 
-  userWallets = await gridlock.createWallets(coinTypes);
+  userWallets = await gridlock.createWallets(coinTypes, { verbose });
 
   if (!userWallets) {
     spinner.fail(`Failed to create ${coinTypes} wallet`);
@@ -187,12 +187,12 @@ const signMessage = async (email, message, coinType) => {
     process.exit(1);
   }
 
-  const wallets = await gridlock.getWallets();
+  const wallets = await gridlock.getWallets({ verbose });
   const wallet = wallets.find((wallet) => wallet.coinType === coinType);
 
   const spinner = ora(`Signing message using ${coinType} wallet...`).start();
 
-  const resp = await gridlock.signMessage(message, coinType);
+  const resp = await gridlock.signMessage(message, coinType, { verbose });
 
   if (resp && resp.signature) {
     spinner.succeed('Message signed successfully');
@@ -214,12 +214,12 @@ const verifyMessage = async (email, coinType, message, signature) => {
     process.exit(1);
   }
 
-  const wallets = await gridlock.getWallets();
+  const wallets = await gridlock.getWallets({ verbose });
   const wallet = wallets.find((wallet) => wallet.coinType === coinType);
 
   const spinner = ora('Verifying message...').start();
 
-  const isValid = await gridlock.verifySignature(coinType, message, signature, wallet.address);
+  const isValid = await gridlock.verifySignature(coinType, message, signature, wallet.address, { verbose });
 
   if (isValid === null) {
     spinner.fail('Failed to verify message');
@@ -248,7 +248,7 @@ const listNetworkNodes = async (email) => {
   }
 
   const spinner = ora('Retrieving network nodes...').start();
-  const nodes = await gridlock.getNodes();
+  const nodes = await gridlock.getNodes({ verbose });
   if (!nodes) return spinner.fail('Failed to retrieve network nodes');
   spinner.succeed('Network nodes successfully retrieved');
   if (verbose) {
@@ -267,7 +267,7 @@ const showUserData = async (email) => {
   }
 
   const spinner = ora('Retrieving user data...').start();
-  const user = await gridlock.getUser();
+  const user = await gridlock.getUser({ verbose });
   if (!user) return spinner.fail('Failed to retrieve user data');
   spinner.succeed('User data successfully retrieved');
   if (verbose) {
@@ -287,7 +287,7 @@ const showWallets = async (email) => {
 
   const spinner = ora('Retrieving wallet data...').start();
 
-  userWallets = await gridlock.getWallets();
+  userWallets = await gridlock.getWallets({ verbose });
   if (!userWallets) {
     spinner.fail('No user wallets found.');
     return;
@@ -317,7 +317,7 @@ const deleteUser = async (email) => {
   }
 
   const spinner = ora('Deleting user...').start();
-  const resp = await gridlock.deleteUser();
+  const resp = await gridlock.deleteUser({ verbose });
   if (!resp) return spinner.fail('Failed to delete user');
   spinner.succeed('User deleted successfully');
   logout();
@@ -336,7 +336,7 @@ const addGuardian = async (email, name) => {
   }
 
   const spinner = ora('Adding guardian...').start();
-  const data = await gridlock.addUserGuardian({ name });
+  const data = await gridlock.addUserGuardian({ name }, { verbose });
 
   if (!data) return spinner.fail('Failed to add guardian');
 
@@ -353,7 +353,7 @@ const addGuardian = async (email, name) => {
       ownerNodeId: user.nodeId,
     };
 
-    const response = await gridlock.generateGuardianDeeplink(params);
+    const response = await gridlock.generateGuardianDeeplink(params, { verbose });
     const deepLink = response?.deepLink;
 
     if (!deepLink) return spinner.fail('Failed to generate guardian deeplink');
@@ -374,12 +374,13 @@ const signTransaction = async (email, transaction, coinType) => {
 
   console.warn('WARNING: DEVELOPMENT IN PROGRESS. MIGHT NOT WORK AS EXPECTED');
 
-  const wallets = await gridlock.getWallets();
+  const wallets = await gridlock.getWallets({ verbose });
   const wallet = wallets.find((wallet) => wallet.coinType === coinType);
 
   const spinner = ora(`Signing transaction using ${coinType} wallet...`).start();
-
-  const resp = await gridlock.signSerializedTx(transaction, coinType);
+  console.log(`Transaction: ${transaction}`);
+  console.log(`Coin Type: ${coinType}`);
+  const resp = await gridlock.signSerializedTx(transaction, coinType, { verbose });
   console.log('resp', resp);
 
   if (resp && resp.signedTx) {
@@ -392,6 +393,33 @@ const signTransaction = async (email, transaction, coinType) => {
   } else {
     spinner.fail('Failed to sign transaction');
   }
+};
+
+const createTransaction = async (email, coinType, transactionDetails) => {
+  await initializeSdk();
+  const initResult = await initUser(email);
+  if (initResult !== true) {
+    console.error(initResult);
+    process.exit(1);
+  }
+
+  const spinner = ora(`Creating transaction for ${coinType}...`).start();
+
+  try {
+    const transaction = await gridlock.createSerializedTx(coinType, transactionDetails, { verbose });
+    if (transaction && transaction.serializedTx) {
+      spinner.succeed('Transaction created successfully');
+      if (verbose) {
+        console.log('Transaction details:', transaction);
+      } else {
+        prettyLog({ coinType, transaction: transaction.serializedTx });
+      }
+    } else {
+      spinner.fail('Failed to create transaction');
+    }
+  } catch (error) {
+    spinner.fail('Failed to create transaction');
+    console.error(error.message);
 };
 
 program.option('-v, --verbose', 'Enable verbose output').hook('preAction', async (thisCommand) => {
@@ -514,5 +542,19 @@ program
   .command(COMMANDS.SHOW_SUPPORTED_COINS)
   .description('Show supported coins')
   .action(showSupportedCoins);
+
+program
+  .command('create-tx')
+  .description('Create a serialized transaction')
+  .requiredOption('-e, --email <email>', 'User email')
+  .requiredOption('-c, --coinType <coinType>', `Specify the coin type (${SUPPORTED_COINS_STRING})`)
+  .requiredOption('-d, --details <details>', 'Transaction details in JSON format')
+  .action((options) => {
+    const email = options.email;
+    const coinType = verifyOptionCoinType(options);
+    const transactionDetails = JSON.parse(options.details);
+
+    createTransaction(email, coinType, transactionDetails);
+  });
 
 program.parse(process.argv);
