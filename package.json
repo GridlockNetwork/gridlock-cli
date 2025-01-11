@@ -18,5 +18,11 @@
     "ora": "^8.1.0",
     "qrcode-terminal": "^0.12.0",
     "yup": "^1.4.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "typescript-eslint": "^8.19.1"
   }
 }
