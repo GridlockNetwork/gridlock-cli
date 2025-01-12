@@ -8,21 +8,27 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { generateKeyPairSync } from 'crypto';
+import {
+  SUPPORTED_COINS_STRING,
+  API_KEY,
+  BASE_URL,
+  MONGO_URI,
+  DB_NAME,
+  DEBUG_MODE,
+} from './constants.js';
+import { SUPPORTED_COINS } from 'gridlock-pg-sdk';
 
-// -----------------------------------
-// REQUIRED CONFIGURATION
-// -----------------------------------
 const gridlockSdk = new GridlockSdk({
-  apiKey: '1234567890', // Replace with your actual API key
-  baseUrl: 'https://5074-2600-100e-a020-5c3-5d3d-c879-f9b8-7888.ngrok-free.app', // Replace with your actual base URL
-  verbose: false, // Set to true for continuous verbose logging
+  apiKey: API_KEY,
+  baseUrl: BASE_URL,
+  verbose: DEBUG_MODE,
   logger: console,
 });
 
-// MongoDB configuration for initializing the SDK
+// MongoDB configuration for initializing the 
 const mongoConfig = {
-  uri: 'mongodb://root:example@172.18.0.1:27017/', // Ensure the connection string includes the database name
-  dbName: 'gridlock', // Database name
+  uri: MONGO_URI,
+  dbName: DB_NAME,
 };
 
 let verbose = false;
@@ -288,18 +294,24 @@ const createUser = async (email, password) => {
   }
   const { user } = response.payload;
   spinner.succeed(`➕ Created account for user: ${user.username}`);
-
 };
 
-const createWallet = async () => {
-  const answers = await inquirer.prompt([
-    { type: 'input', name: 'email', message: 'User email:' },
-    { type: 'password', name: 'password', message: 'Network access password:' },
-    { type: 'list', name: 'blockchain', message: 'Select blockchain:', choices: SUPPORTED_COINS_STRING.split(', ') },
-  ]);
-
+const createWallet = async (email, password, blockchain) => {
+  if (!email || !password || !blockchain) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'email', message: 'User email:' },
+      { type: 'password', name: 'password', message: 'Network access password:' },
+      { type: 'list', name: 'blockchain', message: 'Select blockchain:', choices: SUPPORTED_COINS },
+    ]);
+    email = answers.email;
+    password = answers.password;
+    blockchain = answers.blockchain;
+  }
+  // this is where I left off. I just realized that session management in the SDK is crazy. 
+  // session and state should be managed with the CLI
+  // additionally, database setup it overengineered and simply adds friction. json file storage is fine here.. 
   const spinner = ora('Creating wallet...').start();
-  const response = await gridlockSdk.createWallets([answers.blockchain]);
+  const response = await gridlockSdk.createWallets([blockchain]);
   if (!response.success) {
     spinner.fail('Failed to create wallet');
     console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
@@ -315,7 +327,7 @@ const signTransaction = async () => {
   const answers = await inquirer.prompt([
     { type: 'input', name: 'email', message: 'User email:' },
     { type: 'password', name: 'password', message: 'Network access password:' },
-    { type: 'list', name: 'blockchain', message: 'Select blockchain:', choices: SUPPORTED_COINS_STRING.split(', ') },
+    { type: 'list', name: 'blockchain', message: 'Select blockchain:', choices: SUPPORTED_COINS },
     { type: 'input', name: 'action', message: 'Action type (e.g., sign-msg):' },
     { type: 'input', name: 'message', message: 'Message to be signed:' },
   ]);
@@ -377,9 +389,14 @@ program
   });
 
 program
-  .command('create wallet')
+  .command('create-wallet')
   .description('Create a new wallet')
-  .action(createWallet);
+  .option('-e, --email <email>', 'User email')
+  .option('-p, --password <password>', 'Network access password')
+  .option('-b, --blockchain <blockchain>', 'Blockchain to create wallet for')
+  .action(async (options) => {
+    await createWallet(options.email, options.password, options.blockchain);
+  });
 
 program
   .command('sign')

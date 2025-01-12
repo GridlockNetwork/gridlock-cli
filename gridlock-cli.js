@@ -13,7 +13,7 @@ import {
   COMMANDS,
   SUPPORTED_COINS_STRING,
   WALLET_REQUIRED_ACTIONS,
-} from './constants.js';
+} from './old_constants.js';
 import { red, green, prettyLog } from './helpers.js';
 
 const verifyOptionCoinType = (options) => {
@@ -57,6 +57,7 @@ const initUser = async (email) => {
 
     authData = JSON.parse(fs.readFileSync(authDataFilePath));
     const { token, nodeId, nodePublicKey, userId } = authData;
+
     const response = await gridlock.refreshToken(token);
 
     if (response.success) {
