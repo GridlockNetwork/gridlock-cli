@@ -9,8 +9,8 @@ import path from 'path';
 import os from 'os';
 import { generateKeyPairSync } from 'crypto';
 
-
-// Initialize Gridlock SDK with required configuration
+// -----------------------------------
+// REQUIRED CONFIGURATION
 // -----------------------------------
 const gridlockSdk = new GridlockSdk({
   apiKey: '1234567890', // Replace with your actual API key
@@ -24,25 +24,22 @@ const mongoConfig = {
   uri: 'mongodb://root:example@172.18.0.1:27017/', // Ensure the connection string includes the database name
   dbName: 'gridlock', // Database name
 };
-// -----------------------------------
-
 
 let verbose = false;
 
-// Add pre and post hooks to add two line feeds
-program.hook('preAction', () => {
-  console.log('\n\n');
-});
-
-program.hook('postAction', () => {
-  console.log('\n\n');
-});
+// -----------------------------------
+// CLI FUNCTIONS
+// -----------------------------------
+const guardianTypeMap = {
+  'Local Guardian': 'localGuardian',
+  'Gridlock Guardian': 'gridlockGuardian',
+  'Cloud Guardian': 'cloudGuardian',
+  'Owner Guardian': 'ownerGuardian',
+};
 
 const showNetwork = async () => {
-  console.log('Retrieving network status...'); //todo remove
   const spinner = ora('Retrieving network status...').start();
   const response = await gridlockSdk.showNetwork();
-  console.log('response: ', response); // todo remove
 
   if (!response.success) {
     spinner.fail('Failed to retrieve network status');
@@ -56,15 +53,16 @@ const showNetwork = async () => {
   console.log(chalk.bold('\n🌐 Guardians in the Network:'));
   console.log('-----------------------------------');
 
-  const localGuardians = guardians.filter(g => g.type === 'Local Guardian');
-  const gridlockGuardians = guardians.filter(g => g.type === 'Gridlock Guardian');
-  const independentGuardians = guardians.filter(g => g.type !== 'Local Guardian' && g.type !== 'Gridlock Guardian');
+  const localGuardians = guardians.filter(g => g.type === 'localGuardian');
+  const gridlockGuardians = guardians.filter(g => g.type === 'gridlockGuardian');
+  const cloudGuardians = guardians.filter(g => g.type === 'cloudGuardian');
+  const ownerGuardian = guardians.find(g => g.type === 'ownerGuardian');
 
   const printGuardians = (title, guardians) => {
-    console.log(chalk.bold(`\n${title}:`));
+    console.log(chalk.bold(`\n${title}:\n`));
     guardians.forEach((guardian, index) => {
       console.log(`       ${chalk.bold('Name:')} ${guardian.name}`);
-      console.log(`       ${chalk.bold('Type:')} ${guardian.type}`);
+      console.log(`       ${chalk.bold('Type:')} ${Object.keys(guardianTypeMap).find(key => guardianTypeMap[key] === guardian.type)}`);
       console.log(`       ${chalk.bold('Node ID:')} ${guardian.nodeId}`);
       console.log(`       ${chalk.bold('Public Key:')} ${guardian.publicKey}`);
       const status = guardian.active ? chalk.green('ACTIVE') : chalk.red('INACTIVE');
@@ -75,8 +73,9 @@ const showNetwork = async () => {
     });
   };
 
+  ownerGuardian && printGuardians('👑 Owner Guardian', [ownerGuardian]);
   printGuardians('🏡  Local Guardians', localGuardians);
-  printGuardians('🌥️  Cloud Guardians', independentGuardians);
+  printGuardians('🌥️  Cloud Guardians', cloudGuardians);
   printGuardians('🛡️  Gridlock Guardians', gridlockGuardians);
 
   console.log('-----------------------------------');
@@ -86,12 +85,28 @@ const showNetwork = async () => {
   return;
 };
 
-const addGuardianLocal = async (name) => {
+const addGuardianLocal = async (name, isOwnerGuardian) => {
   if (!name) {
     const answers = await inquirer.prompt([
       { type: 'input', name: 'name', message: 'Guardian name:' },
+      { type: 'confirm', name: 'isOwnerGuardian', message: 'Is this the owner guardian?', default: false },
     ]);
     name = answers.name;
+    isOwnerGuardian = answers.isOwnerGuardian;
+  }
+
+  if (isOwnerGuardian) {
+    const networkResponse = await gridlockSdk.showNetwork();
+    if (!networkResponse.success) {
+      console.error(`Error: ${networkResponse.error.message} (Code: ${networkResponse.error.code})`);
+      return;
+    }
+
+    const ownerGuardians = networkResponse.payload.filter(g => g.type === 'ownerGuardian');
+    if (ownerGuardians.length > 0) {
+      console.error('An owner guardian already exists in the database. Delete the existing owner guardian before adding a new one.');
+      return;
+    }
   }
 
   const { privateKey, publicKey } = generateKeyPairSync('ed25519', {
@@ -102,7 +117,7 @@ const addGuardianLocal = async (name) => {
   const guardian = {
     nodeId: uuidv4(),
     name,
-    type: 'Local Guardian',
+    type: isOwnerGuardian ? 'ownerGuardian' : 'localGuardian',
     model: 'sdk',
     active: true,
     publicKey: publicKey.toString('base64'),
@@ -120,30 +135,59 @@ const addGuardianLocal = async (name) => {
   spinner.succeed('Local guardian added successfully');
   console.log(chalk.bold('\n➕ New Local Guardian:'));
   console.log(`     ${chalk.bold('Name:')} ${guardian.name}`);
-  console.log(`     ${chalk.bold('Type:')} ${guardian.type}`);
+  console.log(`     ${chalk.bold('Type:')} ${Object.keys(guardianTypeMap).find(key => guardianTypeMap[key] === guardian.type)}`);
   console.log(`     ${chalk.bold('Node ID:')} ${guardian.nodeId}`);
   console.log(`     ${chalk.bold('Public Key:')} ${guardian.publicKey}`);
-  console.log(`     ${chalk.bold('---')}`);
+
+  await showNetwork();
+};
+
+const getGridlockGuardian = async () => {
+  const spinner = ora('Retrieving Gridlock guardians...').start();
+  const response = await gridlockSdk.getGridlockGuardian();
+  if (!response.success) {
+    spinner.fail('Failed to retrieve Gridlock guardians');
+    console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
+    return null;
+  }
+  const guardians = response.payload;
+  spinner.succeed('Gridlock guardians retrieved successfully');
+  return guardians;
 };
 
 const addGuardianGridlock = async () => {
   const spinner = ora('Retrieving Gridlock guardian...').start();
-  const response = await gridlockSdk.getGridlockGuardian();
+  const gridlockGuardians = await getGridlockGuardian(); //todo why is there an extra function being called?
+  //todo need to figure out how to deal with something that isn't "gridlock guardian", probably ok in the new setup from krist that won't have much stuff. 
+  if (!gridlockGuardians) {
+    spinner.fail('Failed to retrieve Gridlock guardians');
+    return;
+  }
+
+  const response = await gridlockSdk.showNetwork();
   if (!response.success) {
-    spinner.fail('Failed to retrieve Gridlock guardian');
+    spinner.fail('Failed to retrieve network status');
     console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
     return;
   }
 
-  const guardian = response.payload;
+  const existingGuardians = response.payload;
+  const existingGuardianIds = existingGuardians.map(g => g.nodeId);
 
-  const saveResponse = await gridlockSdk.addGuardianToNetwork(guardian);
+  const newGuardian = gridlockGuardians.find(g => !existingGuardianIds.includes(g.nodeId));
+  if (!newGuardian) {
+    spinner.fail('No new Gridlock guardian available to add');
+    return;
+  }
+
+  const saveResponse = await gridlockSdk.addGuardianToNetwork(newGuardian);
   if (!saveResponse.success) {
     spinner.fail('Failed to save Gridlock guardian');
     console.error(`Error: ${saveResponse.error.message} (Code: ${saveResponse.error.code})`);
     return;
   }
   spinner.succeed('Gridlock guardian retrieved and saved successfully');
+  await showNetwork();
 };
 
 const addGuardianCloud = async (name, nodeId, publicKey) => {
@@ -161,14 +205,13 @@ const addGuardianCloud = async (name, nodeId, publicKey) => {
   const guardian = {
     nodeId,
     name,
-    type: 'Cloud Guardian',
+    type: 'cloudGuardian',
     active: true,
     publicKey,
   };
 
   const spinner = ora('Adding guardian...').start();
   const response = await gridlockSdk.addGuardianToNetwork(guardian);
-  console.log('kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk');
   if (!response.success) {
     spinner.fail('Failed to add guardian');
     console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
@@ -176,11 +219,10 @@ const addGuardianCloud = async (name, nodeId, publicKey) => {
   }
 
   spinner.succeed('Guardian added successfully');
-  console.log('Updated Guardian List:');
-  showNetwork();
+  await showNetwork();
 };
 
-const addGuardian = async (guardianType, name, nodeId, publicKey) => {
+const addGuardian = async (guardianType, name, nodeId, publicKey, isOwnerGuardian) => {
   console.log('Adding guardian...');
   if (!guardianType) {
     console.log('no parameters given');
@@ -201,7 +243,7 @@ const addGuardian = async (guardianType, name, nodeId, publicKey) => {
   }
 
   if (guardianType === 'local') {
-    await addGuardianLocal(name);
+    await addGuardianLocal(name, isOwnerGuardian);
   } else if (guardianType === 'gridlock') {
     await addGuardianGridlock();
   } else if (guardianType === 'cloud') {
@@ -211,34 +253,42 @@ const addGuardian = async (guardianType, name, nodeId, publicKey) => {
   }
 };
 
-program
-  .command('add-guardian')
-  .description('Add a guardian')
-  .option('-t, --type <type>', 'Type of guardian (local, cloud, gridlock, partner)')
-  .option('-n, --name <name>', 'Guardian name')
-  .option('-i, --nodeId <nodeId>', 'Node ID')
-  .option('-p, --publicKey <publicKey>', 'Guardian public key')
-  .action(async (options) => {
-    await addGuardian(options.type, options.name, options.nodeId, options.publicKey);
-  });
-
-const createUser = async () => {
-  const answers = await inquirer.prompt([
-    { type: 'input', name: 'email', message: 'User email:' },
-    { type: 'password', name: 'password', message: 'Network access password:' },
-  ]);
+const createUser = async (email, password) => {
+  if (!email || !password) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'email', message: 'User email:' },
+      { type: 'input', name: 'password', message: 'Network access password:' }, //keep type as input instead of password for demo purposes
+    ]);
+    email = answers.email;
+    password = answers.password;
+  }
 
   const spinner = ora('Creating user...').start();
-  const response = await gridlockSdk.createUser({ email: answers.email, password: answers.password });
+
+  const networkResponse = await gridlockSdk.showNetwork();
+  if (!networkResponse.success) {
+    spinner.fail('Failed to retrieve network status');
+    console.error(`Error: ${networkResponse.error.message} (Code: ${networkResponse.error.code})`);
+    return;
+  }
+
+  const guardians = networkResponse.payload;
+
+  const registerData = {
+    email,
+    password,
+    guardians,
+  };
+
+  const response = await gridlockSdk.createUser(registerData);
   if (!response.success) {
     spinner.fail('Failed to create user');
     console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
     return;
   }
-
-  spinner.succeed('User created successfully');
   const { user } = response.payload;
-  console.log(`Owner Guardian Node ID: ${user.nodeId}`);
+  spinner.succeed(`➕ Created account for user: ${user.username}`);
+
 };
 
 const createWallet = async () => {
@@ -282,28 +332,22 @@ const signTransaction = async () => {
   const { signature } = response.payload;
   console.log(`Signature: ${signature}`);
 };
-
-const getGridlockGuardian = async () => {
-  const spinner = ora('Retrieving Gridlock guardian...').start();
-  const response = await gridlockSdk.getGridlockGuardian();
-  console.log(response);
-  if (!response.success) {
-    spinner.fail('Failed to retrieve Gridlock guardian');
-    console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
-    return;
-  }
-  console.log(`     ${chalk.bold('Name:')} ${response.payload}`);
-  console.log(`     ${chalk.bold('Name:')} ${response.payload.name}`);
-  spinner.succeed('Gridlock guardian retrieved successfully');
-  console.log(chalk.bold('\n🛡️  Gridlock Guardian:'));
-  console.log(`     ${chalk.bold('Name:')} ${response.payload.name}`);
-  console.log(`     ${chalk.bold('Node ID:')} ${response.payload.nodeId}`);
-  console.log(`     ${chalk.bold('Public Key:')} ${response.payload.publicKey}`);
-};
+// -----------------------------------
+// CLI INTERFACE CODE
+// -----------------------------------
 
 program.option('-v, --verbose', 'Enable verbose output').hook('preAction', async (thisCommand) => {
   verbose = thisCommand.opts().verbose;
   gridlockSdk.verbose = verbose;
+});
+
+// Add pre and post hooks to add two line feeds for readability
+program.hook('preAction', () => {
+  console.log('\n\n');
+});
+
+program.hook('postAction', () => {
+  console.log('\n\n');
 });
 
 program
@@ -312,9 +356,25 @@ program
   .action(showNetwork);
 
 program
+  .command('add-guardian')
+  .description('Add a guardian')
+  .option('-t, --type <type>', 'Type of guardian (local, cloud, gridlock, partner)')
+  .option('-n, --name <name>', 'Guardian name')
+  .option('-i, --nodeId <nodeId>', 'Node ID')
+  .option('-p, --publicKey <publicKey>', 'Guardian public key')
+  .option('-o, --owner', 'Is this the owner guardian')
+  .action(async (options) => {
+    await addGuardian(options.type, options.name, options.nodeId, options.publicKey, options.owner);
+  });
+
+program
   .command('create-user')
   .description('Create a new user')
-  .action(createUser);
+  .option('-e, --email <email>', 'User email')
+  .option('-p, --password <password>', 'Network access password')
+  .action(async (options) => {
+    await createUser(options.email, options.password);
+  });
 
 program
   .command('create wallet')
@@ -331,8 +391,15 @@ program
   .description('Retrieve and display the Gridlock guardian')
   .action(getGridlockGuardian);
 
-await gridlockSdk.initDb({ ...mongoConfig });
-program.parse(process.argv);
-gridlockSdk.closeDb();
+// -----------------------------------
+// RUN PROGRAM
+// -----------------------------------
+
+try {
+  await gridlockSdk.initDb({ ...mongoConfig });
+  await program.parseAsync(process.argv);
+} finally {
+  gridlockSdk.closeDb();
+}
 
 
