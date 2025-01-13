@@ -323,12 +323,12 @@ const createWallet = async (email, password, blockchain) => {
     console.error('Token not found for user');
     return;
   }
-
+  //TODO need to move the login functionality to the sdk and just have a single create-wallet call with password/session key
   console.log('Attempting to log in with token...'); //todo remove
   console.log(`Token: ${token}`); //todo remove 
   const loginResponse = await gridlock.loginToken(token);
   if (!loginResponse.success) {
-    console.error(`Failed to log in with token\nError: ${loginResponse.error.message} (Code: ${loginResponse.error.code})${loginResponse.raw ? `\nRaw response: ${loginResponse.raw}` : ''}`);
+    console.error(`Failed to log in with token\nError: ${loginResponse.error.message} (Code: ${loginResponse.error.code})${loginResponse.raw ? `\nRaw response: ${JSON.stringify(loginResponse.raw)}` : ''}`);
     return;
   }
   const updatedToken = loginResponse.payload.token;
@@ -347,21 +347,57 @@ const createWallet = async (email, password, blockchain) => {
   console.log('Wallet creation response:', response); // Debug log
 
   spinner.succeed('Wallet created successfully');
+  console.log('responseeeeeeeeeeeeeeeeeeeeeeeeeeee:', response); // Debug log
+  const walletList = response.payload.walletList;
+  console.log('Wallet List:, walletList:', walletList); // Debug log
+  walletList.forEach((wallet, index) => {
+    console.log(`${wallet.coinType} Wallet`);
+    console.log(`  Blockchain: ${wallet.address}`);
+  });
   const wallet = response.payload[0];
-  console.log(`Wallet Address: ${wallet.address}`);
+  //console.log(`Wallet Address: ${wallet.address}`);
 };
 
-const signTransaction = async () => {
-  const answers = await inquirer.prompt([
-    { type: 'input', name: 'email', message: 'User email:' },
-    { type: 'password', name: 'password', message: 'Network access password:' },
-    { type: 'list', name: 'blockchain', message: 'Select blockchain:', choices: SUPPORTED_COINS },
-    { type: 'input', name: 'action', message: 'Action type (e.g., sign-msg):' },
-    { type: 'input', name: 'message', message: 'Message to be signed:' },
-  ]);
+const signTransaction = async (email, password, blockchain, action, message) => {
+  if (!email || !password || !blockchain || !action || !message) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'email', message: 'User email:' },
+      { type: 'password', name: 'password', message: 'Network access password:' },
+      { type: 'list', name: 'blockchain', message: 'Select blockchain:', choices: SUPPORTED_COINS },
+      { type: 'input', name: 'action', message: 'Action type (e.g., sign-msg):' },
+      { type: 'input', name: 'message', message: 'Message to be signed:' },
+    ]);
+    email = answers.email;
+    password = answers.password;
+    blockchain = answers.blockchain;
+    action = answers.action;
+    message = answers.message;
+  }
+
+  const user = loadUser(email);
+  if (!user) {
+    console.error('User not found');
+    return;
+  }
+
+  const token = loadToken(email);
+  if (!token) {
+    console.error('Token not found for user');
+    return;
+  }
+
+  console.log('Attempting to log in with token...');
+  const loginResponse = await gridlock.loginToken(token);
+  if (!loginResponse.success) {
+    console.error(`Failed to log in with token\nError: ${loginResponse.error.message} (Code: ${loginResponse.error.code})${loginResponse.raw ? `\nRaw response: ${JSON.stringify(loginResponse.raw)}` : ''}`);
+    return;
+  }
+  const updatedToken = loginResponse.payload.token;
+  saveToken(updatedToken, email);
+  console.log('Successfully logged in with token');  //todo remove
 
   const spinner = ora('Signing transaction...').start();
-  const response = await gridlock.signMessage(answers.message, answers.blockchain);
+  const response = await gridlock.signMessage(message, blockchain);
   if (!response.success) {
     spinner.fail(`Failed to sign transaction\nError: ${response.error.message} (Code: ${response.error.code})${response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''}`);
     return;
@@ -425,12 +461,14 @@ program
 program
   .command('sign')
   .description('Sign a transaction')
-  .action(signTransaction);
-
-program
-  .command('get-gridlock-guardian')
-  .description('Retrieve and display the Gridlock guardian')
-  .action(getGridlockGuardian);
+  .option('-e, --email <email>', 'User email')
+  .option('-p, --password <password>', 'Network access password')
+  .option('-b, --blockchain <blockchain>', 'Blockchain to use')
+  .option('-a, --action <action>', 'Action type (e.g., sign-msg)')
+  .option('-m, --message <message>', 'Message to be signed')
+  .action(async (options) => {
+    await signTransaction(options.email, options.password, options.blockchain, options.action, options.message);
+  });
 
 // ---------------- RUN PROGRAM ----------------
 
