@@ -58,7 +58,7 @@ const initUser = async (email) => {
     authData = JSON.parse(fs.readFileSync(authDataFilePath));
     const { token, nodeId, nodePublicKey, userId } = authData;
 
-    const response = await gridlock.refreshToken(token);
+    const response = await gridlock.loginToken(token);
 
     if (response.success) {
       const payload = response.payload;

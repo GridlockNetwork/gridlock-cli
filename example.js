@@ -12,30 +12,78 @@ import {
   SUPPORTED_COINS_STRING,
   API_KEY,
   BASE_URL,
-  MONGO_URI,
-  DB_NAME,
   DEBUG_MODE,
 } from './constants.js';
 import { SUPPORTED_COINS } from 'gridlock-pg-sdk';
+import { log } from 'console';
 
-const gridlockSdk = new GridlockSdk({
+const gridlock = new GridlockSdk({
   apiKey: API_KEY,
   baseUrl: BASE_URL,
   verbose: DEBUG_MODE,
   logger: console,
 });
 
-// MongoDB configuration for initializing the 
-const mongoConfig = {
-  uri: MONGO_URI,
-  dbName: DB_NAME,
+// ---------------- DATA MANAGEMENT FUNCTIONS -------------------
+
+const GUARDIANS_DIR = path.join(os.homedir(), '.gridlock-cli', 'guardians');
+const USERS_DIR = path.join(os.homedir(), '.gridlock-cli', 'users');
+const TOKENS_DIR = path.join(os.homedir(), '.gridlock-cli', 'tokens');
+
+const saveGuardian = (guardian) => {
+  if (!fs.existsSync(GUARDIANS_DIR)) {
+    fs.mkdirSync(GUARDIANS_DIR, { recursive: true });
+  }
+  const filePath = path.join(GUARDIANS_DIR, `${guardian.nodeId}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(guardian, null, 2));
 };
+
+const loadGuardians = () => {
+  if (!fs.existsSync(GUARDIANS_DIR)) {
+    return [];
+  }
+  return fs.readdirSync(GUARDIANS_DIR).map(file => {
+    const filePath = path.join(GUARDIANS_DIR, file);
+    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  });
+};
+
+const saveUser = (user) => {
+  if (!fs.existsSync(USERS_DIR)) {
+    fs.mkdirSync(USERS_DIR, { recursive: true });
+  }
+  const filePath = path.join(USERS_DIR, `${user.email}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(user, null, 2));
+};
+
+const loadUser = (email) => {
+  const filePath = path.join(USERS_DIR, `${email}.json`);
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+};
+
+const saveToken = (token, email) => {
+  if (!fs.existsSync(TOKENS_DIR)) {
+    fs.mkdirSync(TOKENS_DIR, { recursive: true });
+  }
+  const filePath = path.join(TOKENS_DIR, `${email}.json`);
+  fs.writeFileSync(filePath, JSON.stringify({ token }, null, 2));
+};
+
+const loadToken = (email) => {
+  const filePath = path.join(TOKENS_DIR, `${email}.json`);
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  return JSON.parse(fs.readFileSync(filePath, 'utf-8')).token;
+};
+
+// ---------------- CLI FUNCTIONS ----------------
 
 let verbose = false;
 
-// -----------------------------------
-// CLI FUNCTIONS
-// -----------------------------------
 const guardianTypeMap = {
   'Local Guardian': 'localGuardian',
   'Gridlock Guardian': 'gridlockGuardian',
@@ -45,15 +93,7 @@ const guardianTypeMap = {
 
 const showNetwork = async () => {
   const spinner = ora('Retrieving network status...').start();
-  const response = await gridlockSdk.showNetwork();
-
-  if (!response.success) {
-    spinner.fail('Failed to retrieve network status');
-    console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
-    return;
-  }
-
-  const guardians = response.payload;
+  const guardians = loadGuardians();
 
   spinner.succeed('Network status retrieved successfully');
   console.log(chalk.bold('\n🌐 Guardians in the Network:'));
@@ -102,13 +142,8 @@ const addGuardianLocal = async (name, isOwnerGuardian) => {
   }
 
   if (isOwnerGuardian) {
-    const networkResponse = await gridlockSdk.showNetwork();
-    if (!networkResponse.success) {
-      console.error(`Error: ${networkResponse.error.message} (Code: ${networkResponse.error.code})`);
-      return;
-    }
-
-    const ownerGuardians = networkResponse.payload.filter(g => g.type === 'ownerGuardian');
+    const guardians = loadGuardians();
+    const ownerGuardians = guardians.filter(g => g.type === 'ownerGuardian');
     if (ownerGuardians.length > 0) {
       console.error('An owner guardian already exists in the database. Delete the existing owner guardian before adding a new one.');
       return;
@@ -131,13 +166,7 @@ const addGuardianLocal = async (name, isOwnerGuardian) => {
   };
 
   const spinner = ora('Adding local guardian...').start();
-  const response = await gridlockSdk.addGuardianToNetwork(guardian);
-  if (!response.success) {
-    spinner.fail('Failed to add local guardian');
-    console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
-    return;
-  }
-
+  saveGuardian(guardian);
   spinner.succeed('Local guardian added successfully');
   console.log(chalk.bold('\n➕ New Local Guardian:'));
   console.log(`     ${chalk.bold('Name:')} ${guardian.name}`);
@@ -150,7 +179,7 @@ const addGuardianLocal = async (name, isOwnerGuardian) => {
 
 const getGridlockGuardian = async () => {
   const spinner = ora('Retrieving Gridlock guardians...').start();
-  const response = await gridlockSdk.getGridlockGuardian();
+  const response = await gridlock.getGridlockGuardian()
   if (!response.success) {
     spinner.fail('Failed to retrieve Gridlock guardians');
     console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
@@ -163,21 +192,13 @@ const getGridlockGuardian = async () => {
 
 const addGuardianGridlock = async () => {
   const spinner = ora('Retrieving Gridlock guardian...').start();
-  const gridlockGuardians = await getGridlockGuardian(); //todo why is there an extra function being called?
-  //todo need to figure out how to deal with something that isn't "gridlock guardian", probably ok in the new setup from krist that won't have much stuff. 
+  const gridlockGuardians = await getGridlockGuardian();
   if (!gridlockGuardians) {
     spinner.fail('Failed to retrieve Gridlock guardians');
     return;
   }
 
-  const response = await gridlockSdk.showNetwork();
-  if (!response.success) {
-    spinner.fail('Failed to retrieve network status');
-    console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
-    return;
-  }
-
-  const existingGuardians = response.payload;
+  const existingGuardians = loadGuardians();
   const existingGuardianIds = existingGuardians.map(g => g.nodeId);
 
   const newGuardian = gridlockGuardians.find(g => !existingGuardianIds.includes(g.nodeId));
@@ -186,12 +207,7 @@ const addGuardianGridlock = async () => {
     return;
   }
 
-  const saveResponse = await gridlockSdk.addGuardianToNetwork(newGuardian);
-  if (!saveResponse.success) {
-    spinner.fail('Failed to save Gridlock guardian');
-    console.error(`Error: ${saveResponse.error.message} (Code: ${saveResponse.error.code})`);
-    return;
-  }
+  saveGuardian(newGuardian);
   spinner.succeed('Gridlock guardian retrieved and saved successfully');
   await showNetwork();
 };
@@ -217,13 +233,7 @@ const addGuardianCloud = async (name, nodeId, publicKey) => {
   };
 
   const spinner = ora('Adding guardian...').start();
-  const response = await gridlockSdk.addGuardianToNetwork(guardian);
-  if (!response.success) {
-    spinner.fail('Failed to add guardian');
-    console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
-    return;
-  }
-
+  saveGuardian(guardian);
   spinner.succeed('Guardian added successfully');
   await showNetwork();
 };
@@ -263,7 +273,7 @@ const createUser = async (email, password) => {
   if (!email || !password) {
     const answers = await inquirer.prompt([
       { type: 'input', name: 'email', message: 'User email:' },
-      { type: 'input', name: 'password', message: 'Network access password:' }, //keep type as input instead of password for demo purposes
+      { type: 'input', name: 'password', message: 'Password:' }, //keep type as input instead of password for demo purposes
     ]);
     email = answers.email;
     password = answers.password;
@@ -271,14 +281,7 @@ const createUser = async (email, password) => {
 
   const spinner = ora('Creating user...').start();
 
-  const networkResponse = await gridlockSdk.showNetwork();
-  if (!networkResponse.success) {
-    spinner.fail('Failed to retrieve network status');
-    console.error(`Error: ${networkResponse.error.message} (Code: ${networkResponse.error.code})`);
-    return;
-  }
-
-  const guardians = networkResponse.payload;
+  const guardians = loadGuardians();
 
   const registerData = {
     email,
@@ -286,13 +289,14 @@ const createUser = async (email, password) => {
     guardians,
   };
 
-  const response = await gridlockSdk.createUser(registerData);
+  const response = await gridlock.createUser(registerData);
   if (!response.success) {
-    spinner.fail('Failed to create user');
-    console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
+    spinner.fail(`Failed to create user\nError: ${response.error.message} (Code: ${response.error.code})${response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''}`);
     return;
   }
-  const { user } = response.payload;
+  const { user, token } = response.payload;
+  saveToken(token, email);
+  saveUser(user);
   spinner.succeed(`➕ Created account for user: ${user.username}`);
 };
 
@@ -307,16 +311,40 @@ const createWallet = async (email, password, blockchain) => {
     password = answers.password;
     blockchain = answers.blockchain;
   }
-  // this is where I left off. I just realized that session management in the SDK is crazy. 
-  // session and state should be managed with the CLI
-  // additionally, database setup it overengineered and simply adds friction. json file storage is fine here.. 
-  const spinner = ora('Creating wallet...').start();
-  const response = await gridlockSdk.createWallets([blockchain]);
-  if (!response.success) {
-    spinner.fail('Failed to create wallet');
-    console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
+
+  const user = loadUser(email);
+  if (!user) {
+    console.error('User not found');
     return;
   }
+
+  const token = loadToken(email);
+  if (!token) {
+    console.error('Token not found for user');
+    return;
+  }
+
+  console.log('Attempting to log in with token...'); //todo remove
+  console.log(`Token: ${token}`); //todo remove 
+  const loginResponse = await gridlock.loginToken(token);
+  if (!loginResponse.success) {
+    console.error(`Failed to log in with token\nError: ${loginResponse.error.message} (Code: ${loginResponse.error.code})${loginResponse.raw ? `\nRaw response: ${loginResponse.raw}` : ''}`);
+    return;
+  }
+  const updatedToken = loginResponse.payload.token;
+  saveToken(updatedToken, email);
+  console.log(loginResponse); //todo remove
+  console.log('Successfully logged in with token'); //todo remove
+
+  console.log('Creating wallet for blockchain:', blockchain); // Debug log
+  const spinner = ora('Creating wallet...').start();
+  const response = await gridlock.createWallets([blockchain]);
+  if (!response.success) {
+    spinner.fail(`Failed to create wallet\nError: ${response.error.message} (Code: ${response.error.code})${response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''}`);
+    console.error('Raw response:', response.raw); // Debug log
+    return;
+  }
+  console.log('Wallet creation response:', response); // Debug log
 
   spinner.succeed('Wallet created successfully');
   const wallet = response.payload[0];
@@ -333,10 +361,9 @@ const signTransaction = async () => {
   ]);
 
   const spinner = ora('Signing transaction...').start();
-  const response = await gridlockSdk.signMessage(answers.message, answers.blockchain);
+  const response = await gridlock.signMessage(answers.message, answers.blockchain);
   if (!response.success) {
-    spinner.fail('Failed to sign transaction');
-    console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
+    spinner.fail(`Failed to sign transaction\nError: ${response.error.message} (Code: ${response.error.code})${response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''}`);
     return;
   }
 
@@ -344,16 +371,13 @@ const signTransaction = async () => {
   const { signature } = response.payload;
   console.log(`Signature: ${signature}`);
 };
-// -----------------------------------
-// CLI INTERFACE CODE
-// -----------------------------------
+// ---------------- CLI INTERFACE ----------------
 
 program.option('-v, --verbose', 'Enable verbose output').hook('preAction', async (thisCommand) => {
   verbose = thisCommand.opts().verbose;
-  gridlockSdk.verbose = verbose;
+  gridlock.verbose = verbose;
 });
 
-// Add pre and post hooks to add two line feeds for readability
 program.hook('preAction', () => {
   console.log('\n\n');
 });
@@ -408,15 +432,8 @@ program
   .description('Retrieve and display the Gridlock guardian')
   .action(getGridlockGuardian);
 
-// -----------------------------------
-// RUN PROGRAM
-// -----------------------------------
+// ---------------- RUN PROGRAM ----------------
 
-try {
-  await gridlockSdk.initDb({ ...mongoConfig });
-  await program.parseAsync(process.argv);
-} finally {
-  gridlockSdk.closeDb();
-}
+await program.parseAsync(process.argv);
 
 
