@@ -1,7 +1,7 @@
 // gridlock-cli.js
 import { program } from 'commander';
 import fs from 'fs';
-import GridlockSdk, { SUPPORTED_COINS } from 'gridlock-pg-sdk';
+import GridlockSdk, { SUPPORTED_COINS } from 'gridlock-sdk';
 import ora from 'ora';
 import qrcode from 'qrcode-terminal';
 import * as yup from 'yup';

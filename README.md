@@ -32,13 +32,13 @@ docker start partner-nodes-2 && docker logs -f partner-nodes-2
 
 Just add the nodeId and public Key there for both partner guardians. Leave the other properties of the objects untouched.
 
-3. **Create a folder on your local machine and clone the gridlock-pg-sdk repository:**
+3. **Create a folder on your local machine and clone the gridlock-sdk repository:**
 
 ```sh
-git clone https://github.com/GridlockNetwork/gridlock-pg-sdk
+git clone https://github.com/GridlockNetwork/gridlock-sdk
 ```
 
-4. **Run the following commands in the gridlock-pg-sdk directory:**
+4. **Run the following commands in the gridlock-sdk directory:**
 
 
 
@@ -52,13 +52,13 @@ Leave the terminal running for development.
 
 
 
-5. **Using other terminal window checkout and clone the gridlock-sdk-cli repository in the same parent folder as the gridlock-pg-sdk:**
+5. **Using other terminal window checkout and clone the gridlock-sdk-cli repository in the same parent folder as the gridlock-sdk:**
 
 ```sh
 git clone https://github.com/GridlockNetwork/gridlock-cli
 cd gridlock-cli
 yarn
-yarn link "gridlock-pg-sdk"
+yarn link "gridlock-sdk"
 ```
 
 6. **Run the CLI:**
@@ -79,6 +79,6 @@ node gridlock-cli.js <command-name> -h
 
 to see the options for that command.
 
-When you make a modification on the gridlock-pg-sdk side, because the `yarn build:watch` was run, it will automatically reflect in the CLI part without rebuilding.
+When you make a modification on the gridlock-sdk side, because the `yarn build:watch` was run, it will automatically reflect in the CLI part without rebuilding.
 
 Test and enjoy!

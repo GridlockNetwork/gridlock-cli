@@ -857,7 +857,7 @@ graphemer@^1.4.0:
   resolved "https://registry.npmjs.org/graphemer/-/graphemer-1.4.0.tgz"
   integrity sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==
 
-"gridlock-pg-sdk@file:../gridlock-pg-sdk":
+"gridlock-sdk@file:../gridlock-sdk":
   version "1.0.0"
   dependencies:
     "@types/mongodb" "^4.0.7"

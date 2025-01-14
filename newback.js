@@ -2,7 +2,7 @@ import { program } from 'commander';
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import ora from 'ora';
-import GridlockSdk from 'gridlock-pg-sdk';
+import GridlockSdk from 'gridlock-sdk';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
@@ -14,7 +14,7 @@ import {
   BASE_URL,
   DEBUG_MODE,
 } from './constants.js';
-import { SUPPORTED_COINS } from 'gridlock-pg-sdk';
+import { SUPPORTED_COINS } from 'gridlock-sdk';
 import { log } from 'console';
 
 const gridlock = new GridlockSdk({
@@ -269,12 +269,14 @@ const addGuardian = async (guardianType, name, nodeId, publicKey, isOwnerGuardia
   }
 };
 
-const createUser = async (email, password) => {
-  if (!email || !password) {
+const createUser = async (name, email, password) => {
+  if (!name || !email || !password) {
     const answers = await inquirer.prompt([
+      { type: 'input', name: 'name', message: 'User name:' },
       { type: 'input', name: 'email', message: 'User email:' },
-      { type: 'input', name: 'password', message: 'Password:' }, //keep type as input instead of password for demo purposes
+      { type: 'input', name: 'password', message: 'Password:' }, // keep type as input instead of password for demo purposes
     ]);
+    name = answers.name;
     email = answers.email;
     password = answers.password;
   }
@@ -282,12 +284,19 @@ const createUser = async (email, password) => {
   const spinner = ora('Creating user...').start();
 
   const guardians = loadGuardians();
+  const ownerGuardian = guardians.find(g => g.type === 'ownerGuardian');
+  if (!ownerGuardian) {
+    spinner.fail('No owner guardian found. Please add an owner guardian first.');
+    return;
+  }
 
   const registerData = {
+    name,
     email,
     password,
-    guardians,
+    ownerGuardian: ownerGuardian,
   };
+  console.log('Registering user with data:', registerData); // Debug log
 
   const response = await gridlock.createUser(registerData);
   if (!response.success) {
@@ -442,10 +451,11 @@ program
 program
   .command('create-user')
   .description('Create a new user')
+  .option('-n, --name <name>', 'User name')
   .option('-e, --email <email>', 'User email')
   .option('-p, --password <password>', 'Network access password')
   .action(async (options) => {
-    await createUser(options.email, options.password);
+    await createUser(options.name, options.email, options.password);
   });
 
 program

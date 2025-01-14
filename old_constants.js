@@ -1,4 +1,4 @@
-import { SUPPORTED_COINS } from 'gridlock-pg-sdk';
+import { SUPPORTED_COINS } from 'gridlock-sdk';
 import path from 'path';
 import os from 'os';
 
