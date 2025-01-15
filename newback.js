@@ -8,6 +8,8 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { generateKeyPairSync } from 'crypto';
+import argon2 from 'argon2';
+import crypto from 'crypto';
 import {
   SUPPORTED_COINS_STRING,
   API_KEY,
@@ -29,15 +31,15 @@ const gridlock = new GridlockSdk({
 const GUARDIANS_DIR = path.join(os.homedir(), '.gridlock-cli', 'guardians');
 const USERS_DIR = path.join(os.homedir(), '.gridlock-cli', 'users');
 const TOKENS_DIR = path.join(os.homedir(), '.gridlock-cli', 'tokens');
+const KEYS_DIR = path.join(os.homedir(), '.gridlock-cli', 'keys');
 
 const saveGuardian = (guardian) => {
   if (!fs.existsSync(GUARDIANS_DIR)) {
     fs.mkdirSync(GUARDIANS_DIR, { recursive: true });
   }
-  const filePath = path.join(GUARDIANS_DIR, `${guardian.nodeId}.json`);
+  const filePath = path.join(GUARDIANS_DIR, `${guardian.nodeId}.guardian.json`);
   fs.writeFileSync(filePath, JSON.stringify(guardian, null, 2));
 };
-
 const loadGuardians = () => {
   if (!fs.existsSync(GUARDIANS_DIR)) {
     return [];
@@ -47,37 +49,128 @@ const loadGuardians = () => {
     return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
   });
 };
-
 const saveUser = (user) => {
   if (!fs.existsSync(USERS_DIR)) {
     fs.mkdirSync(USERS_DIR, { recursive: true });
   }
-  const filePath = path.join(USERS_DIR, `${user.email}.json`);
-  fs.writeFileSync(filePath, JSON.stringify(user, null, 2));
+  const filePath = path.join(USERS_DIR, `${user.email}.user.json`);
+  fs.writeFileSync(filePath, JSON.stringify(user, null, 2) + '\n');
 };
-
 const loadUser = (email) => {
-  const filePath = path.join(USERS_DIR, `${email}.json`);
+  const filePath = path.join(USERS_DIR, `${email}.user.json`);
   if (!fs.existsSync(filePath)) {
     return null;
   }
   return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 };
-
-const saveToken = (token, email) => {
+const saveTokens = (tokens, email) => {
   if (!fs.existsSync(TOKENS_DIR)) {
     fs.mkdirSync(TOKENS_DIR, { recursive: true });
   }
-  const filePath = path.join(TOKENS_DIR, `${email}.json`);
-  fs.writeFileSync(filePath, JSON.stringify({ token }, null, 2));
+  const filePath = path.join(TOKENS_DIR, `${email}.tokens.json`);
+  fs.writeFileSync(filePath, JSON.stringify(tokens, null, 2) + '\n');
 };
-
-const loadToken = (email) => {
-  const filePath = path.join(TOKENS_DIR, `${email}.json`);
+const loadToken = (email, type = 'access') => {
+  const filePath = path.join(TOKENS_DIR, `${email}.tokens.json`);
   if (!fs.existsSync(filePath)) {
     return null;
   }
-  return JSON.parse(fs.readFileSync(filePath, 'utf-8')).token;
+  const tokens = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  return tokens[type];
+};
+const saveKey = (nodeId, keyObject, type) => {
+  if (!fs.existsSync(KEYS_DIR)) {
+    fs.mkdirSync(KEYS_DIR, { recursive: true });
+  }
+  const checksum = crypto.createHash('sha256').update(JSON.stringify(keyObject)).digest('hex');
+  const filePath = path.join(KEYS_DIR, `${nodeId}.${type}.key.json`);
+  fs.writeFileSync(filePath, JSON.stringify({ ...keyObject, checksum }, null, 2));
+};
+
+const deriveKey = async (password, salt) => {
+  return new Promise((resolve, reject) => {
+    crypto.scrypt(password, salt, 32, { N: 16384, r: 8, p: 1 }, (err, derivedKey) => {
+      if (err) reject(err);
+      else resolve(derivedKey);
+    });
+  });
+};
+
+const encryptKey = async (key, password) => {
+  const salt = crypto.randomBytes(16);
+  const derivedKey = await deriveKey(password, salt);
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', derivedKey, iv);
+  const encryptedKey = Buffer.concat([cipher.update(key), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  key.fill(0);
+
+  return {
+    key: encryptedKey.toString('base64'),
+    iv: iv.toString('base64'),
+    authTag: authTag.toString('base64'),
+    salt: salt.toString('base64'),
+    algorithm: 'aes-256-gcm',
+    createdAt: new Date().toISOString(),
+  };
+};
+
+const decryptKey = async (encryptedKeyObject, password) => {
+  try {
+    const { key, iv, authTag, salt } = encryptedKeyObject;
+    const derivedKey = await deriveKey(password, Buffer.from(salt, 'base64'));
+    const decipher = crypto.createDecipheriv('aes-256-gcm', derivedKey, Buffer.from(iv, 'base64'));
+    decipher.setAuthTag(Buffer.from(authTag, 'base64'));
+    const decryptedKey = Buffer.concat([decipher.update(Buffer.from(key, 'base64')), decipher.final()]);
+    return decryptedKey;
+  } catch (error) {
+    console.error('Failed to decrypt key:', error.message);
+    throw new Error('Decryption failed. Please check your password and try again.');
+  }
+};
+
+const generateSigningKey = async (password) => {
+  const signingKey = crypto.randomBytes(32);
+  return await encryptKey(signingKey, password);
+};
+
+const generateIdentityKey = async (password) => {
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519', {
+    publicKeyEncoding: { type: 'spki', format: 'der' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'der' },
+  });
+  const encryptedPrivateKey = await encryptKey(privateKey, password);
+  return { privateKey: encryptedPrivateKey, publicKey: publicKey.toString('base64') };
+};
+
+const loadKey = (nodeId, type) => {
+  const filePath = path.join(KEYS_DIR, `${nodeId}.${type}.key.json`);
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  const keyObject = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  const { checksum, ...keyData } = keyObject;
+  const calculatedChecksum = crypto.createHash('sha256').update(JSON.stringify(keyData)).digest('hex');
+  if (checksum !== calculatedChecksum) {
+    throw new Error('Key file integrity check failed. The file may be corrupted or tampered with.');
+  }
+  return keyData;
+};
+
+/**
+ * Derives a stronger, unique node-specific key using HKDF.
+ * @param {Buffer} signingKey - The encrypted signing key.
+ * @param {string} nodeId - The unique node ID.
+ * @returns {string} - A unique per-node derived key.
+ */
+const nodeSigningKey = (signingKey, nodeId) => {
+  return crypto.hkdfSync(
+    'sha256',                      // Hash function
+    signingKey,                    // Input key material
+    Buffer.from(nodeId),           // Salt (adds uniqueness)
+    Buffer.from('node-auth'),      // Info (context-specific label)
+    32                             // Output length (256-bit key)
+  ).toString('hex');
 };
 
 // ---------------- CLI FUNCTIONS ----------------
@@ -85,12 +178,13 @@ const loadToken = (email) => {
 let verbose = false;
 
 const guardianTypeMap = {
-  'Local Guardian': 'localGuardian',
-  'Gridlock Guardian': 'gridlockGuardian',
-  'Cloud Guardian': 'cloudGuardian',
   'Owner Guardian': 'ownerGuardian',
+  'Local Guardian': 'localGuardian',
+  'Social Guardian': 'socialGuardian',
+  'Cloud Guardian': 'cloudGuardian',
+  'Gridlock Guardian': 'gridlockGuardian',
+  'Partner Guardian': 'partnerGuardian',
 };
-
 const showNetwork = async () => {
   const spinner = ora('Retrieving network status...').start();
   const guardians = loadGuardians();
@@ -99,13 +193,21 @@ const showNetwork = async () => {
   console.log(chalk.bold('\n🌐 Guardians in the Network:'));
   console.log('-----------------------------------');
 
-  const localGuardians = guardians.filter(g => g.type === 'localGuardian');
-  const gridlockGuardians = guardians.filter(g => g.type === 'gridlockGuardian');
-  const cloudGuardians = guardians.filter(g => g.type === 'cloudGuardian');
-  const ownerGuardian = guardians.find(g => g.type === 'ownerGuardian');
+  const guardianGroups = guardians.reduce((acc, guardian) => {
+    acc[guardian.type] = acc[guardian.type] || [];
+    acc[guardian.type].push(guardian);
+    return acc;
+  }, {});
+
+  const ownerGuardian = (guardianGroups['ownerGuardian'] || [])[0]; // there can only be one owner guardian
+  const localGuardians = guardianGroups['localGuardian'] || [];
+  const socialGuardians = guardianGroups['socialGuardian'] || [];
+  const cloudGuardians = guardianGroups['cloudGuardian'] || [];
+  const gridlockGuardians = guardianGroups['gridlockGuardian'] || [];
+  const partnerGuardians = guardianGroups['partnerGuardian'] || [];
 
   const printGuardians = (title, guardians) => {
-    console.log(chalk.bold(`\n${title}:\n`));
+    console.log(chalk.bold(`\n${title}:`));
     guardians.forEach((guardian, index) => {
       console.log(`       ${chalk.bold('Name:')} ${guardian.name}`);
       console.log(`       ${chalk.bold('Type:')} ${Object.keys(guardianTypeMap).find(key => guardianTypeMap[key] === guardian.type)}`);
@@ -120,9 +222,11 @@ const showNetwork = async () => {
   };
 
   ownerGuardian && printGuardians('👑 Owner Guardian', [ownerGuardian]);
-  printGuardians('🏡  Local Guardians', localGuardians);
+  printGuardians('🏡 Local Guardians', localGuardians);
+  printGuardians('👥 Social Guardians', socialGuardians);
   printGuardians('🌥️  Cloud Guardians', cloudGuardians);
   printGuardians('🛡️  Gridlock Guardians', gridlockGuardians);
+  printGuardians('🤝 Partner Guardians', partnerGuardians);
 
   console.log('-----------------------------------');
   const threshold = 3;
@@ -130,19 +234,21 @@ const showNetwork = async () => {
   console.log(`Total Guardians: ${guardians.length} | Threshold: ${threshold} of ${guardians.length} ${thresholdCheck}`);
   return;
 };
-
-const addGuardianLocal = async (name, isOwnerGuardian) => {
-  if (!name) {
+const registerGuardianLocal = async (name, isOwnerGuardian, password) => {
+  if (!name || !isOwnerGuardian || !password) {
     const answers = await inquirer.prompt([
       { type: 'input', name: 'name', message: 'Guardian name:' },
       { type: 'confirm', name: 'isOwnerGuardian', message: 'Is this the owner guardian?', default: false },
+      { type: 'password', name: 'password', message: 'Enter a password for encrypting the identity key:' },
     ]);
     name = answers.name;
     isOwnerGuardian = answers.isOwnerGuardian;
+    password = answers.password;
   }
 
+  const spinner = ora('Adding local guardian...').start();
+  const guardians = loadGuardians();
   if (isOwnerGuardian) {
-    const guardians = loadGuardians();
     const ownerGuardians = guardians.filter(g => g.type === 'ownerGuardian');
     if (ownerGuardians.length > 0) {
       console.error('An owner guardian already exists in the database. Delete the existing owner guardian before adding a new one.');
@@ -150,23 +256,26 @@ const addGuardianLocal = async (name, isOwnerGuardian) => {
     }
   }
 
-  const { privateKey, publicKey } = generateKeyPairSync('ed25519', {
-    publicKeyEncoding: { type: 'spki', format: 'der' },
-    privateKeyEncoding: { type: 'pkcs8', format: 'der' },
-  });
-
   const guardian = {
     nodeId: uuidv4(),
     name,
     type: isOwnerGuardian ? 'ownerGuardian' : 'localGuardian',
     model: 'sdk',
     active: true,
-    publicKey: publicKey.toString('base64'),
-    privateKey: privateKey.toString('base64'), // Add privateKey to the guardian object
   };
 
-  const spinner = ora('Adding local guardian...').start();
+  // Generate identity key pair for E2E communication, saving the public key to the guardian object, saving the private key encrypted
+  const { privateKey, publicKey } = await generateIdentityKey(password);
+  guardian.publicKey = publicKey;
+  saveKey(guardian.nodeId, { ...privateKey, type: 'identity', description: 'Identity key used for E2E communication' }, 'identity');
+
+  // Generate signing key for ownerGuardian to signing actions
+  const encryptedSigningKey = await generateSigningKey(password);
+  saveKey(guardian.nodeId, { ...encryptedSigningKey, type: 'signing', description: 'Signing key used for signing actions' }, 'signing');
+
+
   saveGuardian(guardian);
+
   spinner.succeed('Local guardian added successfully');
   console.log(chalk.bold('\n➕ New Local Guardian:'));
   console.log(`     ${chalk.bold('Name:')} ${guardian.name}`);
@@ -176,7 +285,6 @@ const addGuardianLocal = async (name, isOwnerGuardian) => {
 
   await showNetwork();
 };
-
 const getGridlockGuardian = async () => {
   const spinner = ora('Retrieving Gridlock guardians...').start();
   const response = await gridlock.getGridlockGuardian()
@@ -189,8 +297,7 @@ const getGridlockGuardian = async () => {
   spinner.succeed('Gridlock guardians retrieved successfully');
   return guardians;
 };
-
-const addGuardianGridlock = async () => {
+const registerGuardianGridlock = async () => {
   const spinner = ora('Retrieving Gridlock guardian...').start();
   const gridlockGuardians = await getGridlockGuardian();
   if (!gridlockGuardians) {
@@ -211,8 +318,7 @@ const addGuardianGridlock = async () => {
   spinner.succeed('Gridlock guardian retrieved and saved successfully');
   await showNetwork();
 };
-
-const addGuardianCloud = async (name, nodeId, publicKey) => {
+const registerGuardianCloud = async (name, nodeId, publicKey) => {
   if (!name || !nodeId || !publicKey) {
     const answers = await inquirer.prompt([
       { type: 'input', name: 'name', message: 'Guardian name:' },
@@ -237,11 +343,9 @@ const addGuardianCloud = async (name, nodeId, publicKey) => {
   spinner.succeed('Guardian added successfully');
   await showNetwork();
 };
-
-const addGuardian = async (guardianType, name, nodeId, publicKey, isOwnerGuardian) => {
+const registerGuardian = async (guardianType, name, nodeId, publicKey, isOwnerGuardian, password) => {
   console.log('Adding guardian...');
   if (!guardianType) {
-    console.log('no parameters given');
     const answers = await inquirer.prompt([
       {
         type: 'list',
@@ -257,16 +361,82 @@ const addGuardian = async (guardianType, name, nodeId, publicKey, isOwnerGuardia
     guardianType = answers.guardianType;
     console.log('Selected guardian type: ', guardianType);
   }
-
+  console.log('Guardian Name:', name);
+  console.log('Is Owner Guardian:', isOwnerGuardian);
+  console.log('Password:', password);
   if (guardianType === 'local') {
-    await addGuardianLocal(name, isOwnerGuardian);
+    await registerGuardianLocal(name, isOwnerGuardian, password);
   } else if (guardianType === 'gridlock') {
-    await addGuardianGridlock();
+    await registerGuardianGridlock();
   } else if (guardianType === 'cloud') {
-    await addGuardianCloud(name, nodeId, publicKey);
+    await registerGuardianCloud(name, nodeId, publicKey);
   } else {
     console.error('Invalid guardian type. Please specify "local", "gridlock", or "cloud".');
   }
+};
+const login = async (email) => {
+  const accessToken = loadToken(email, 'access');
+
+  if (!accessToken) {
+    console.error('Token not found for user');
+    return null;
+  }
+
+  console.log('Attempting to log in with token...');
+  const loginResponse = await gridlock.loginToken(accessToken.token);
+
+  if (!loginResponse.success) {
+    console.error(`Failed to log in with token\nError: ${loginResponse.error.message} (Code: ${loginResponse.error.code})${loginResponse.raw ? `\nRaw response: ${JSON.stringify(loginResponse.raw)}` : ''}`);
+    return null;
+  }
+  const guardians = loadGuardians();
+  const answers = await inquirer.prompt([
+    { type: 'input', name: 'email', message: 'User email:' },
+    {
+      type: 'list',
+      name: 'guardianNodeId',
+      message: 'Select the guardian to add:',
+      choices: guardians.map(g => ({ name: `${g.name} (${g.nodeId})`, value: g.nodeId })),
+    },
+  ]);
+  email = answers.email;
+  guardianNodeId = answers.guardianNodeId;
+
+  const spinner = ora('Adding guardian...').start();
+
+  const user = loadUser(email);
+  if (!user) {
+    console.error('User not found');
+    return;
+  }
+
+  const guardian = loadGuardians().find(g => g.nodeId === guardianNodeId);
+  if (!guardian) {
+    console.error('Guardian not found');
+    return;
+  }
+
+  const token = await loadToken(email, 'access');
+  const responset = await gridlock.refreshRequestHandler(token.token);
+
+  //todo need to improve the login function to validate the existing stored token and refresh it if needed
+  //note: we are not going to store credentials but rather the priv/pub key of the ownerGuardian as the credential
+  //if the ownerGuardian is not available, we will designate a new one using consensus from other guardians
+  //the ownerguardian private key IS the user credentials according to the system
+  // const token = await login(email);
+  // if (!token) {
+  //   return;
+  // }
+
+
+  const response = await gridlock.assignGuardian(user, guardian);
+  if (!response.success) {
+    spinner.fail(`Failed to add guardian\nError: ${response.error.message} (Code: ${response.error.code})${response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''}`);
+    return;
+  }
+
+  spinner.succeed('Guardian added successfully');
+  await showNetwork();
 };
 
 const createUser = async (name, email, password) => {
@@ -296,19 +466,18 @@ const createUser = async (name, email, password) => {
     password,
     ownerGuardian: ownerGuardian,
   };
-  console.log('Registering user with data:', registerData); // Debug log
+
 
   const response = await gridlock.createUser(registerData);
   if (!response.success) {
     spinner.fail(`Failed to create user\nError: ${response.error.message} (Code: ${response.error.code})${response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''}`);
     return;
   }
-  const { user, token } = response.payload;
-  saveToken(token, email);
+  const { user, tokens } = response.payload;
+  saveTokens(tokens, email);
   saveUser(user);
-  spinner.succeed(`➕ Created account for user: ${user.username}`);
+  spinner.succeed(`➕ Created account for user: ${user.name}`);
 };
-
 const createWallet = async (email, password, blockchain) => {
   if (!email || !password || !blockchain) {
     const answers = await inquirer.prompt([
@@ -327,23 +496,10 @@ const createWallet = async (email, password, blockchain) => {
     return;
   }
 
-  const token = loadToken(email);
+  const token = await login(email);
   if (!token) {
-    console.error('Token not found for user');
     return;
   }
-  //TODO need to move the login functionality to the sdk and just have a single create-wallet call with password/session key
-  console.log('Attempting to log in with token...'); //todo remove
-  console.log(`Token: ${token}`); //todo remove 
-  const loginResponse = await gridlock.loginToken(token);
-  if (!loginResponse.success) {
-    console.error(`Failed to log in with token\nError: ${loginResponse.error.message} (Code: ${loginResponse.error.code})${loginResponse.raw ? `\nRaw response: ${JSON.stringify(loginResponse.raw)}` : ''}`);
-    return;
-  }
-  const updatedToken = loginResponse.payload.token;
-  saveToken(updatedToken, email);
-  console.log(loginResponse); //todo remove
-  console.log('Successfully logged in with token'); //todo remove
 
   console.log('Creating wallet for blockchain:', blockchain); // Debug log
   const spinner = ora('Creating wallet...').start();
@@ -366,7 +522,6 @@ const createWallet = async (email, password, blockchain) => {
   const wallet = response.payload[0];
   //console.log(`Wallet Address: ${wallet.address}`);
 };
-
 const signTransaction = async (email, password, blockchain, action, message) => {
   if (!email || !password || !blockchain || !action || !message) {
     const answers = await inquirer.prompt([
@@ -389,21 +544,10 @@ const signTransaction = async (email, password, blockchain, action, message) => 
     return;
   }
 
-  const token = loadToken(email);
+  const token = await login(email);
   if (!token) {
-    console.error('Token not found for user');
     return;
   }
-
-  console.log('Attempting to log in with token...');
-  const loginResponse = await gridlock.loginToken(token);
-  if (!loginResponse.success) {
-    console.error(`Failed to log in with token\nError: ${loginResponse.error.message} (Code: ${loginResponse.error.code})${loginResponse.raw ? `\nRaw response: ${JSON.stringify(loginResponse.raw)}` : ''}`);
-    return;
-  }
-  const updatedToken = loginResponse.payload.token;
-  saveToken(updatedToken, email);
-  console.log('Successfully logged in with token');  //todo remove
 
   const spinner = ora('Signing transaction...').start();
   const response = await gridlock.signMessage(message, blockchain);
@@ -416,13 +560,13 @@ const signTransaction = async (email, password, blockchain, action, message) => 
   const { signature } = response.payload;
   console.log(`Signature: ${signature}`);
 };
+
 // ---------------- CLI INTERFACE ----------------
 
 program.option('-v, --verbose', 'Enable verbose output').hook('preAction', async (thisCommand) => {
   verbose = thisCommand.opts().verbose;
   gridlock.verbose = verbose;
 });
-
 program.hook('preAction', () => {
   console.log('\n\n');
 });
@@ -437,15 +581,16 @@ program
   .action(showNetwork);
 
 program
-  .command('add-guardian')
-  .description('Add a guardian')
+  .command('register-guardian')
+  .description('Register a new guardian that\'s available for user node pool creation.')
   .option('-t, --type <type>', 'Type of guardian (local, cloud, gridlock, partner)')
   .option('-n, --name <name>', 'Guardian name')
-  .option('-i, --nodeId <nodeId>', 'Node ID')
-  .option('-p, --publicKey <publicKey>', 'Guardian public key')
   .option('-o, --owner', 'Is this the owner guardian')
+  .option('-p, --password <password>', 'Password for encrypting the identity key')
+  .option('-i, --nodeId <nodeId>', 'Node ID')
+  .option('-k, --publicKey <publicKey>', 'Guardian public key')
   .action(async (options) => {
-    await addGuardian(options.type, options.name, options.nodeId, options.publicKey, options.owner);
+    await registerGuardian(options.type, options.name, options.nodeId, options.publicKey, options.owner, options.password);
   });
 
 program
@@ -478,6 +623,22 @@ program
   .option('-m, --message <message>', 'Message to be signed')
   .action(async (options) => {
     await signTransaction(options.email, options.password, options.blockchain, options.action, options.message);
+  });
+
+program
+  .command('assign-guardian')
+  .description('Add a guardian to a specific user\'s node pool')
+  .option('-e, --email <email>', 'User email')
+  .option('-g, --guardianNodeId <guardianNodeId>', 'Guardian node ID')
+  .action(async (options) => {
+    await assignGuardian(options.email, options.guardianNodeId);
+  });
+
+program
+  .command('login')
+  .description('DEBUG FUNCTION')
+  .action(async (options) => {
+    await login('1@1.com');
   });
 
 // ---------------- RUN PROGRAM ----------------
