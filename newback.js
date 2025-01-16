@@ -76,7 +76,7 @@ const loadToken = (email, type = 'access') => {
     return null;
   }
   const tokens = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  return tokens[type];
+  return tokens[type].token;
 };
 const saveKey = (nodeId, keyObject, type) => {
   if (!fs.existsSync(KEYS_DIR)) {
@@ -260,7 +260,6 @@ const registerGuardianLocal = async (name, isOwnerGuardian, password) => {
     nodeId: uuidv4(),
     name,
     type: isOwnerGuardian ? 'ownerGuardian' : 'localGuardian',
-    model: 'sdk',
     active: true,
   };
 
@@ -374,70 +373,66 @@ const registerGuardian = async (guardianType, name, nodeId, publicKey, isOwnerGu
     console.error('Invalid guardian type. Please specify "local", "gridlock", or "cloud".');
   }
 };
-const login = async (email) => {
-  const accessToken = loadToken(email, 'access');
 
-  if (!accessToken) {
-    console.error('Token not found for user');
-    return null;
+
+const login = async (email, password) => {
+  let token = await loginWithToken(email);
+  if (!token) {
+    token = await loginWithKey(email, password);
   }
 
-  console.log('Attempting to log in with token...');
-  const loginResponse = await gridlock.loginToken(accessToken.token);
-
-  if (!loginResponse.success) {
-    console.error(`Failed to log in with token\nError: ${loginResponse.error.message} (Code: ${loginResponse.error.code})${loginResponse.raw ? `\nRaw response: ${JSON.stringify(loginResponse.raw)}` : ''}`);
-    return null;
+  if (token) {
+    saveTokens(token, email);
   }
-  const guardians = loadGuardians();
-  const answers = await inquirer.prompt([
-    { type: 'input', name: 'email', message: 'User email:' },
-    {
-      type: 'list',
-      name: 'guardianNodeId',
-      message: 'Select the guardian to add:',
-      choices: guardians.map(g => ({ name: `${g.name} (${g.nodeId})`, value: g.nodeId })),
-    },
-  ]);
-  email = answers.email;
-  guardianNodeId = answers.guardianNodeId;
+  return token;
+};
+const loginWithToken = async (email) => {
+  const refreshToken = loadToken(email, 'refresh');
+  if (refreshToken) {
+    const spinner = ora('Attempting to log in with token...').start();
+    const loginResponse = await gridlock.loginWithToken(refreshToken);
+    if (loginResponse.success) {
+      spinner.succeed('Logged in with token successfully');
+      return loginResponse.payload.tokens;
+    } else {
+      spinner.fail(`Failed to log in with token`);
+      console.error(`Error: ${loginResponse.error.message} (Code: ${loginResponse.error.code})`);
+    }
+  }
+  return null;
+};
 
-  const spinner = ora('Adding guardian...').start();
-
+const loginWithKey = async (email, password) => {
+  const spinner = ora('Attempting to log in with challenge-response...').start();
   const user = loadUser(email);
   if (!user) {
-    console.error('User not found');
-    return;
+    spinner.fail('User not found.');
+    console.error('User not found.');
+    return null;
   }
 
-  const guardian = loadGuardians().find(g => g.nodeId === guardianNodeId);
-  if (!guardian) {
-    console.error('Guardian not found');
-    return;
+  const { nodeId } = user.ownerGuardian;
+  const privateKeyObject = loadKey(nodeId, 'identity');
+  if (!privateKeyObject) {
+    spinner.fail('Owner guardian private key not found.');
+    console.error('Owner guardian private key not found.');
+    return null;
   }
 
-  const token = await loadToken(email, 'access');
-  const responset = await gridlock.refreshRequestHandler(token.token);
+  const privateKeyBuffer = await decryptKey(privateKeyObject, password);
+  const loginResponse = await gridlock.loginWithKey(user, privateKeyBuffer);
 
-  //todo need to improve the login function to validate the existing stored token and refresh it if needed
-  //note: we are not going to store credentials but rather the priv/pub key of the ownerGuardian as the credential
-  //if the ownerGuardian is not available, we will designate a new one using consensus from other guardians
-  //the ownerguardian private key IS the user credentials according to the system
-  // const token = await login(email);
-  // if (!token) {
-  //   return;
-  // }
-
-
-  const response = await gridlock.assignGuardian(user, guardian);
-  if (!response.success) {
-    spinner.fail(`Failed to add guardian\nError: ${response.error.message} (Code: ${response.error.code})${response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''}`);
-    return;
+  if (loginResponse.success) {
+    spinner.succeed('Logged in with challenge-response successfully');
+    return loginResponse.payload;
+  } else {
+    spinner.fail('Failed to log in with challenge-response');
+    console.error(`Error: ${loginResponse.error.message} (Code: ${loginResponse.error.code})`);
+    return null;
   }
-
-  spinner.succeed('Guardian added successfully');
-  await showNetwork();
 };
+
+
 
 const createUser = async (name, email, password) => {
   if (!name || !email || !password) {
@@ -467,7 +462,6 @@ const createUser = async (name, email, password) => {
     ownerGuardian: ownerGuardian,
   };
 
-
   const response = await gridlock.createUser(registerData);
   if (!response.success) {
     spinner.fail(`Failed to create user\nError: ${response.error.message} (Code: ${response.error.code})${response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''}`);
@@ -496,7 +490,7 @@ const createWallet = async (email, password, blockchain) => {
     return;
   }
 
-  const token = await login(email);
+  const token = await login(email, password);
   if (!token) {
     return;
   }
@@ -544,7 +538,7 @@ const signTransaction = async (email, password, blockchain, action, message) => 
     return;
   }
 
-  const token = await login(email);
+  const token = await login(email, password);
   if (!token) {
     return;
   }
@@ -638,7 +632,7 @@ program
   .command('login')
   .description('DEBUG FUNCTION')
   .action(async (options) => {
-    await login('1@1.com');
+    await login('1@1.com', 'password');
   });
 
 // ---------------- RUN PROGRAM ----------------

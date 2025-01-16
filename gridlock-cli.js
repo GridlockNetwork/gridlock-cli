@@ -277,7 +277,6 @@ const listNetworkNodes = async (email) => {
   const response = await gridlock.getNodes();
   if (!response.success) {
     spinner.fail('Failed to retrieve network nodes');
-    console.error(`Errxxxxor: ${response.error.message} (Code: ${response.error.code})`);
   } else {
     const nodes = response.payload;
     spinner.succeed('Network nodes successfully retrieved');

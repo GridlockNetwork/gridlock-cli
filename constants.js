@@ -5,7 +5,7 @@ import { SUPPORTED_COINS } from 'gridlock-sdk';
 
 
 export const API_KEY = '1234567890'; // Replace with your actual API key
-export const BASE_URL = 'https://f37c-2600-100e-a020-5c3-72d1-8d84-66ce-960c.ngrok-free.app'; // Replace with your actual base URL
+export const BASE_URL = 'https://9000-2600-100e-a020-5c3-15b9-7f9f-6798-4ffe.ngrok-free.app'; // Replace with your actual base URL
 
 export const MONGO_URI = 'mongodb://root:example@172.18.0.1:27017/'; // Ensure the connection string includes the database name
 export const DB_NAME = 'gridlock'; // Database name
