@@ -234,6 +234,37 @@ const showNetwork = async () => {
   console.log(`Total Guardians: ${guardians.length} | Threshold: ${threshold} of ${guardians.length} ${thresholdCheck}`);
   return;
 };
+const registerGuardian = async (guardianType, name, nodeId, publicKey, isOwnerGuardian, password) => {
+  console.log('Adding guardian...');
+  if (!guardianType) {
+    const answers = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'guardianType',
+        message: 'Select the type of guardian to add:',
+        choices: [
+          { name: 'Local Guardian', value: 'local' },
+          { name: 'Gridlock Guardian', value: 'gridlock' },
+          { name: 'Cloud Guardian', value: 'cloud' },
+        ],
+      },
+    ]);
+    guardianType = answers.guardianType;
+    // console.log('Selected guardian type: ', guardianType);
+  }
+  // console.log('Guardian Name:', name);
+  // console.log('Is Owner Guardian:', isOwnerGuardian);
+  // console.log('Password:', password);
+  if (guardianType === 'local') {
+    await registerGuardianLocal(name, isOwnerGuardian, password);
+  } else if (guardianType === 'gridlock') {
+    await registerGuardianGridlock();
+  } else if (guardianType === 'cloud') {
+    await registerGuardianCloud(name, nodeId, publicKey);
+  } else {
+    console.error('Invalid guardian type. Please specify "local", "gridlock", or "cloud".');
+  }
+};
 const registerGuardianLocal = async (name, isOwnerGuardian, password) => {
   if (!name || !isOwnerGuardian || !password) {
     const answers = await inquirer.prompt([
@@ -342,38 +373,6 @@ const registerGuardianCloud = async (name, nodeId, publicKey) => {
   spinner.succeed('Guardian added successfully');
   await showNetwork();
 };
-const registerGuardian = async (guardianType, name, nodeId, publicKey, isOwnerGuardian, password) => {
-  console.log('Adding guardian...');
-  if (!guardianType) {
-    const answers = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'guardianType',
-        message: 'Select the type of guardian to add:',
-        choices: [
-          { name: 'Local Guardian', value: 'local' },
-          { name: 'Gridlock Guardian', value: 'gridlock' },
-          { name: 'Cloud Guardian', value: 'cloud' },
-        ],
-      },
-    ]);
-    guardianType = answers.guardianType;
-    console.log('Selected guardian type: ', guardianType);
-  }
-  console.log('Guardian Name:', name);
-  console.log('Is Owner Guardian:', isOwnerGuardian);
-  console.log('Password:', password);
-  if (guardianType === 'local') {
-    await registerGuardianLocal(name, isOwnerGuardian, password);
-  } else if (guardianType === 'gridlock') {
-    await registerGuardianGridlock();
-  } else if (guardianType === 'cloud') {
-    await registerGuardianCloud(name, nodeId, publicKey);
-  } else {
-    console.error('Invalid guardian type. Please specify "local", "gridlock", or "cloud".');
-  }
-};
-
 
 const login = async (email, password) => {
   let token = await loginWithToken(email);
@@ -431,8 +430,6 @@ const loginWithKey = async (email, password) => {
     return null;
   }
 };
-
-
 
 const createUser = async (name, email, password) => {
   if (!name || !email || !password) {
@@ -555,6 +552,52 @@ const signTransaction = async (email, password, blockchain, action, message) => 
   console.log(`Signature: ${signature}`);
 };
 
+const addGuardian = async (email, guardianNodeId, password) => {
+  if (!email || !guardianNodeId || !password) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'email', message: 'User email:' },
+      { type: 'password', name: 'password', message: 'Network access password:' },
+    ]);
+    email = answers.email;
+    password = answers.password;
+  }
+
+  const guardians = loadGuardians();
+  if (!guardianNodeId) {
+    const guardianChoices = guardians.map(g => ({
+      name: `${g.name} (${g.nodeId})`,
+      value: g.nodeId,
+    }));
+    const guardianAnswer = await inquirer.prompt([
+      { type: 'list', name: 'guardianNodeId', message: 'Select a guardian:', choices: guardianChoices },
+    ]);
+    guardianNodeId = guardianAnswer.guardianNodeId;
+  }
+
+  const spinner = ora('Assigning guardian...').start();
+  const token = await login(email, password);
+  if (!token) {
+    spinner.fail('Login failed.');
+    return;
+  }
+
+  const guardian = guardians.find(g => g.nodeId === guardianNodeId);
+
+  if (!guardian) {
+    spinner.fail('Guardian not found.');
+
+    return;
+  }
+
+  try {
+    await gridlock.addGuardian(guardian);
+    spinner.succeed('Guardian assigned successfully');
+  } catch (error) {
+    spinner.fail('Failed to assign guardian.');
+    console.error('Failed to assign guardian:', error.message);
+  }
+};
+
 // ---------------- CLI INTERFACE ----------------
 
 program.option('-v, --verbose', 'Enable verbose output').hook('preAction', async (thisCommand) => {
@@ -620,19 +663,13 @@ program
   });
 
 program
-  .command('assign-guardian')
+  .command('add-guardian')
   .description('Add a guardian to a specific user\'s node pool')
   .option('-e, --email <email>', 'User email')
   .option('-g, --guardianNodeId <guardianNodeId>', 'Guardian node ID')
+  .option('-p, --password <password>', 'Network access password')
   .action(async (options) => {
-    await assignGuardian(options.email, options.guardianNodeId);
-  });
-
-program
-  .command('login')
-  .description('DEBUG FUNCTION')
-  .action(async (options) => {
-    await login('1@1.com', 'password');
+    await addGuardian(options.email, options.guardianNodeId, options.password);
   });
 
 // ---------------- RUN PROGRAM ----------------
