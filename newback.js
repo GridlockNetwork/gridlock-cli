@@ -411,10 +411,11 @@ const loginWithKey = async (email, password) => {
   }
 
   const { nodeId } = user.ownerGuardian;
+
+  console.log('NodeId', nodeId);
   const privateKeyObject = loadKey(nodeId, 'identity');
   if (!privateKeyObject) {
     spinner.fail('Owner guardian private key not found.');
-    console.error('Owner guardian private key not found.');
     return null;
   }
 
@@ -492,26 +493,17 @@ const createWallet = async (email, password, blockchain) => {
     return;
   }
 
-  console.log('Creating wallet for blockchain:', blockchain); // Debug log
   const spinner = ora('Creating wallet...').start();
   const response = await gridlock.createWallets([blockchain]);
-  if (!response.success) {
-    spinner.fail(`Failed to create wallet\nError: ${response.error.message} (Code: ${response.error.code})${response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''}`);
-    console.error('Raw response:', response.raw); // Debug log
-    return;
-  }
-  console.log('Wallet creation response:', response); // Debug log
+  // if (!response.success) {
+  //   spinner.fail(`Failed to create wallet\nError: ${response.error.message} (Code: ${response.error.code})${response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''}`);
+  //   return;
+  // }
 
   spinner.succeed('Wallet created successfully');
-  console.log('responseeeeeeeeeeeeeeeeeeeeeeeeeeee:', response); // Debug log
-  const walletList = response.payload.walletList;
-  console.log('Wallet List:, walletList:', walletList); // Debug log
-  walletList.forEach((wallet, index) => {
-    console.log(`${wallet.coinType} Wallet`);
-    console.log(`  Blockchain: ${wallet.address}`);
-  });
-  const wallet = response.payload[0];
-  //console.log(`Wallet Address: ${wallet.address}`);
+  const wallet = response.payload;
+  console.log(`  ${blockchain.charAt(0).toUpperCase() + blockchain.slice(1).toLowerCase()} - ${wallet.address}`);
+
 };
 const signTransaction = async (email, password, blockchain, action, message) => {
   if (!email || !password || !blockchain || !action || !message) {
@@ -670,6 +662,20 @@ program
   .option('-p, --password <password>', 'Network access password')
   .action(async (options) => {
     await addGuardian(options.email, options.guardianNodeId, options.password);
+  });
+
+program
+  .command('login')
+  .description('Login to the system')
+  .option('-e, --email <email>', 'User email')
+  .option('-p, --password <password>', 'Network access password')
+  .action(async (options) => {
+    const token = await login(options.email, options.password);
+    if (token) {
+      console.log('Login successful');
+    } else {
+      console.log('Login failed');
+    }
   });
 
 // ---------------- RUN PROGRAM ----------------
