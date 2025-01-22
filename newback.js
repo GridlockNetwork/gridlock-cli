@@ -18,6 +18,11 @@ import {
 } from './constants.js';
 import { SUPPORTED_COINS } from 'gridlock-sdk';
 import { log } from 'console';
+import nacl from 'tweetnacl';
+import { fromSeed } from '@nats-io/nkeys';
+import base32 from 'base32.js';
+const { Decoder } = base32;
+
 
 const gridlock = new GridlockSdk({
   apiKey: API_KEY,
@@ -86,7 +91,6 @@ const saveKey = (nodeId, keyObject, type) => {
   const filePath = path.join(KEYS_DIR, `${nodeId}.${type}.key.json`);
   fs.writeFileSync(filePath, JSON.stringify({ ...keyObject, checksum }, null, 2));
 };
-
 const deriveKey = async (password, salt) => {
   return new Promise((resolve, reject) => {
     crypto.scrypt(password, salt, 32, { N: 16384, r: 8, p: 1 }, (err, derivedKey) => {
@@ -95,7 +99,6 @@ const deriveKey = async (password, salt) => {
     });
   });
 };
-
 const encryptKey = async (key, password) => {
   const salt = crypto.randomBytes(16);
   const derivedKey = await deriveKey(password, salt);
@@ -114,7 +117,6 @@ const encryptKey = async (key, password) => {
     createdAt: new Date().toISOString(),
   };
 };
-
 const decryptKey = async (encryptedKeyObject, password) => {
   try {
     const { key, iv, authTag, salt } = encryptedKeyObject;
@@ -128,12 +130,10 @@ const decryptKey = async (encryptedKeyObject, password) => {
     throw new Error('Decryption failed. Please check your password and try again.');
   }
 };
-
 const generateSigningKey = async (password) => {
   const signingKey = crypto.randomBytes(32);
   return await encryptKey(signingKey, password);
 };
-
 const generateIdentityKey = async (password) => {
   const { privateKey, publicKey } = generateKeyPairSync('ed25519', {
     publicKeyEncoding: { type: 'spki', format: 'der' },
@@ -142,7 +142,6 @@ const generateIdentityKey = async (password) => {
   const encryptedPrivateKey = await encryptKey(privateKey, password);
   return { privateKey: encryptedPrivateKey, publicKey: publicKey.toString('base64') };
 };
-
 const loadKey = (nodeId, type) => {
   const filePath = path.join(KEYS_DIR, `${nodeId}.${type}.key.json`);
   if (!fs.existsSync(filePath)) {
@@ -156,7 +155,6 @@ const loadKey = (nodeId, type) => {
   }
   return keyData;
 };
-
 /**
  * Derives a stronger, unique node-specific key using HKDF.
  * @param {Buffer} signingKey - The encrypted signing key.
@@ -234,7 +232,7 @@ const showNetwork = async () => {
   console.log(`Total Guardians: ${guardians.length} | Threshold: ${threshold} of ${guardians.length} ${thresholdCheck}`);
   return;
 };
-const registerGuardian = async (guardianType, name, nodeId, publicKey, isOwnerGuardian, password) => {
+const registerGuardian = async (guardianType, name, nodeId, publicKey, isOwnerGuardian, password, seed) => {
   console.log('Adding guardian...');
   if (!guardianType) {
     const answers = await inquirer.prompt([
@@ -243,7 +241,7 @@ const registerGuardian = async (guardianType, name, nodeId, publicKey, isOwnerGu
         name: 'guardianType',
         message: 'Select the type of guardian to add:',
         choices: [
-          { name: 'Local Guardian', value: 'local' },
+          // { name: 'Local Guardian', value: 'local' },
           { name: 'Gridlock Guardian', value: 'gridlock' },
           { name: 'Cloud Guardian', value: 'cloud' },
         ],
@@ -252,17 +250,14 @@ const registerGuardian = async (guardianType, name, nodeId, publicKey, isOwnerGu
     guardianType = answers.guardianType;
     // console.log('Selected guardian type: ', guardianType);
   }
-  // console.log('Guardian Name:', name);
-  // console.log('Is Owner Guardian:', isOwnerGuardian);
-  // console.log('Password:', password);
   if (guardianType === 'local') {
     await registerGuardianLocal(name, isOwnerGuardian, password);
   } else if (guardianType === 'gridlock') {
     await registerGuardianGridlock();
   } else if (guardianType === 'cloud') {
-    await registerGuardianCloud(name, nodeId, publicKey);
+    await registerGuardianCloud(name, nodeId, publicKey, isOwnerGuardian, password, seed);
   } else {
-    console.error('Invalid guardian type. Please specify "local", "gridlock", or "cloud".');
+    console.error('Invalid guardian type. Please specify "gridlock" or "cloud".');
   }
 };
 const registerGuardianLocal = async (name, isOwnerGuardian, password) => {
@@ -297,11 +292,11 @@ const registerGuardianLocal = async (name, isOwnerGuardian, password) => {
   // Generate identity key pair for E2E communication, saving the public key to the guardian object, saving the private key encrypted
   const { privateKey, publicKey } = await generateIdentityKey(password);
   guardian.publicKey = publicKey;
-  saveKey(guardian.nodeId, { ...privateKey, type: 'identity', description: 'Identity key used for E2E communication' }, 'identity');
+  saveKey(guardian.nodeId, { ...privateKey, type: 'identity', description: 'Asymmetric Identity key used for E2E communication' }, 'identity');
 
   // Generate signing key for ownerGuardian to signing actions
   const encryptedSigningKey = await generateSigningKey(password);
-  saveKey(guardian.nodeId, { ...encryptedSigningKey, type: 'signing', description: 'Signing key used for signing actions' }, 'signing');
+  saveKey(guardian.nodeId, { ...encryptedSigningKey, type: 'signing', description: 'Symmetric Signing key used for signing actions' }, 'signing');
 
 
   saveGuardian(guardian);
@@ -323,7 +318,7 @@ const getGridlockGuardian = async () => {
     console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
     return null;
   }
-  const guardians = response.payload;
+  const guardians = response.data;
   spinner.succeed('Gridlock guardians retrieved successfully');
   return guardians;
 };
@@ -348,28 +343,75 @@ const registerGuardianGridlock = async () => {
   spinner.succeed('Gridlock guardian retrieved and saved successfully');
   await showNetwork();
 };
-const registerGuardianCloud = async (name, nodeId, publicKey) => {
-  if (!name || !nodeId || !publicKey) {
+
+const registerGuardianCloud = async (name, nodeId, publicKey, isOwnerGuardian, password, seed) => {
+  const guardians = loadGuardians();
+  if (isOwnerGuardian) {
+    const ownerGuardians = guardians.filter(g => g.type === 'ownerGuardian');
+    if (ownerGuardians.length > 0) {
+      console.error('An owner guardian already exists. Please create a user first.');
+      return;
+    }
+  }
+  if (!name || !nodeId || !publicKey || (isOwnerGuardian && !seed)) {
     const answers = await inquirer.prompt([
       { type: 'input', name: 'name', message: 'Guardian name:' },
       { type: 'input', name: 'nodeId', message: 'Node ID:' },
       { type: 'input', name: 'publicKey', message: 'Guardian public key:' },
+      { type: 'confirm', name: 'isOwnerGuardian', message: 'Is this the owner guardian?', default: false },
+      { type: 'password', name: 'password', message: 'Enter a password for encrypting the identity key:' },
     ]);
     name = answers.name;
     nodeId = answers.nodeId;
     publicKey = answers.publicKey;
+    isOwnerGuardian = answers.isOwnerGuardian;
+    password = answers.password;
+
+    if (isOwnerGuardian) {
+      const seedAnswer = await inquirer.prompt([
+        { type: 'input', name: 'seed', message: 'Seed (if owner guardian):' },
+      ]);
+      seed = seedAnswer.seed;
+    }
+  }
+
+  const spinner = ora('Adding guardian...').start();
+
+  if (isOwnerGuardian) {
+    console.log('Seed:', seed); //debug
+    const keyPair = fromSeed(Buffer.from(seed, 'utf8'));
+    const derivedPublicKey = keyPair.getPublicKey();
+    console.log('Derived public key:', derivedPublicKey); //debug
+    if (derivedPublicKey !== publicKey) {
+      console.error('The provided seed does not match the public key.');
+      return;
+    }
+
+    try {
+      const encryptedSeed = await encryptKey(Buffer.from(seed, 'utf8'), password);
+      saveKey(nodeId, { ...encryptedSeed, type: 'identity', description: 'Identity key' }, 'identity');
+    } catch (error) {
+      console.error('Failed to save private key:', error.message);
+      return;
+    }
+
   }
 
   const guardian = {
     nodeId,
     name,
-    type: 'cloudGuardian',
+    type: isOwnerGuardian ? 'ownerGuardian' : 'cloudGuardian',
     active: true,
     publicKey,
   };
 
-  const spinner = ora('Adding guardian...').start();
+
   saveGuardian(guardian);
+
+  if (isOwnerGuardian) {
+
+  }
+
   spinner.succeed('Guardian added successfully');
   await showNetwork();
 };
@@ -392,7 +434,8 @@ const loginWithToken = async (email) => {
     const loginResponse = await gridlock.loginWithToken(refreshToken);
     if (loginResponse.success) {
       spinner.succeed('Logged in with token successfully');
-      return loginResponse.payload.tokens;
+      // console.log('payloadddddddddd', loginResponse.data); //debug
+      return loginResponse.data.tokens;
     } else {
       spinner.fail(`Failed to log in with token`);
       console.error(`Error: ${loginResponse.error.message} (Code: ${loginResponse.error.code})`);
@@ -412,7 +455,7 @@ const loginWithKey = async (email, password) => {
 
   const { nodeId } = user.ownerGuardian;
 
-  console.log('NodeId', nodeId);
+  console.log('NodeId debug: ', nodeId); //debug
   const privateKeyObject = loadKey(nodeId, 'identity');
   if (!privateKeyObject) {
     spinner.fail('Owner guardian private key not found.');
@@ -424,7 +467,7 @@ const loginWithKey = async (email, password) => {
 
   if (loginResponse.success) {
     spinner.succeed('Logged in with challenge-response successfully');
-    return loginResponse.payload;
+    return loginResponse.data;
   } else {
     spinner.fail('Failed to log in with challenge-response');
     console.error(`Error: ${loginResponse.error.message} (Code: ${loginResponse.error.code})`);
@@ -465,11 +508,15 @@ const createUser = async (name, email, password) => {
     spinner.fail(`Failed to create user\nError: ${response.error.message} (Code: ${response.error.code})${response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''}`);
     return;
   }
-  const { user, tokens } = response.payload;
+  const { user, tokens } = response.data;
   saveTokens(tokens, email);
   saveUser(user);
   spinner.succeed(`➕ Created account for user: ${user.name}`);
+
+  // Deregister the owner guardian on success
+  await deregisterGuardian(ownerGuardian.nodeId);
 };
+
 const createWallet = async (email, password, blockchain) => {
   if (!email || !password || !blockchain) {
     const answers = await inquirer.prompt([
@@ -481,6 +528,10 @@ const createWallet = async (email, password, blockchain) => {
     password = answers.password;
     blockchain = answers.blockchain;
   }
+
+  myNodeId - uuidv4();
+  trustedNodes = [dasfadsfadsfdsa, asdfadsfdsaf, adsfadsfdsf];
+
 
   const user = loadUser(email);
   if (!user) {
@@ -494,30 +545,28 @@ const createWallet = async (email, password, blockchain) => {
   }
 
   const spinner = ora('Creating wallet...').start();
-  const response = await gridlock.createWallets([blockchain]);
-  // if (!response.success) {
-  //   spinner.fail(`Failed to create wallet\nError: ${response.error.message} (Code: ${response.error.code})${response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''}`);
-  //   return;
-  // }
+  const response = await gridlock.createWallets([blockchain], user);
+  if (!response.success) {
+    spinner.fail(`Failed to create wallet\nError: ${response.error.message} (Code: ${response.error.code})${response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''}`);
+    return;
+  }
 
   spinner.succeed('Wallet created successfully');
-  const wallet = response.payload;
+  const wallet = response.data;
   console.log(`  ${blockchain.charAt(0).toUpperCase() + blockchain.slice(1).toLowerCase()} - ${wallet.address}`);
 
 };
-const signTransaction = async (email, password, blockchain, action, message) => {
-  if (!email || !password || !blockchain || !action || !message) {
+const signTransaction = async (email, password, blockchain, message) => {
+  if (!email || !password || !blockchain || !message) {
     const answers = await inquirer.prompt([
       { type: 'input', name: 'email', message: 'User email:' },
       { type: 'password', name: 'password', message: 'Network access password:' },
       { type: 'list', name: 'blockchain', message: 'Select blockchain:', choices: SUPPORTED_COINS },
-      { type: 'input', name: 'action', message: 'Action type (e.g., sign-msg):' },
       { type: 'input', name: 'message', message: 'Message to be signed:' },
     ]);
     email = answers.email;
     password = answers.password;
     blockchain = answers.blockchain;
-    action = answers.action;
     message = answers.message;
   }
 
@@ -526,22 +575,21 @@ const signTransaction = async (email, password, blockchain, action, message) => 
     console.error('User not found');
     return;
   }
-
   const token = await login(email, password);
   if (!token) {
     return;
   }
 
   const spinner = ora('Signing transaction...').start();
-  const response = await gridlock.signMessage(message, blockchain);
+  const response = await gridlock.sign(message, blockchain, user);
   if (!response.success) {
     spinner.fail(`Failed to sign transaction\nError: ${response.error.message} (Code: ${response.error.code})${response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''}`);
     return;
   }
 
   spinner.succeed('Transaction signed successfully');
-  const { signature } = response.payload;
-  console.log(`Signature: ${signature}`);
+  const { signature } = response.data;
+  console.log(`Signature: ${response.data}`);
 };
 
 const addGuardian = async (email, guardianNodeId, password) => {
@@ -590,6 +638,16 @@ const addGuardian = async (email, guardianNodeId, password) => {
   }
 };
 
+const deregisterGuardian = async (nodeId) => {
+  const filePath = path.join(GUARDIANS_DIR, `${nodeId}.guardian.json`);
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+    console.log(`Guardian ${nodeId} has been assigned to user.`);
+  } else {
+    console.error(`Guardian with Node ID ${nodeId} not found.`);
+  }
+};
+
 // ---------------- CLI INTERFACE ----------------
 
 program.option('-v, --verbose', 'Enable verbose output').hook('preAction', async (thisCommand) => {
@@ -612,14 +670,15 @@ program
 program
   .command('register-guardian')
   .description('Register a new guardian that\'s available for user node pool creation.')
-  .option('-t, --type <type>', 'Type of guardian (local, cloud, gridlock, partner)')
+  .option('-t, --type <type>', 'Type of guardian (cloud or gridlock)')
   .option('-n, --name <name>', 'Guardian name')
   .option('-o, --owner', 'Is this the owner guardian')
   .option('-p, --password <password>', 'Password for encrypting the identity key')
   .option('-i, --nodeId <nodeId>', 'Node ID')
   .option('-k, --publicKey <publicKey>', 'Guardian public key')
+  .option('-s, --seed <seed>', 'Seed (if owner guardian)')
   .action(async (options) => {
-    await registerGuardian(options.type, options.name, options.nodeId, options.publicKey, options.owner, options.password);
+    await registerGuardian(options.type, options.name, options.nodeId, options.publicKey, options.owner, options.password, options.seed);
   });
 
 program
@@ -648,10 +707,9 @@ program
   .option('-e, --email <email>', 'User email')
   .option('-p, --password <password>', 'Network access password')
   .option('-b, --blockchain <blockchain>', 'Blockchain to use')
-  .option('-a, --action <action>', 'Action type (e.g., sign-msg)')
   .option('-m, --message <message>', 'Message to be signed')
   .action(async (options) => {
-    await signTransaction(options.email, options.password, options.blockchain, options.action, options.message);
+    await signTransaction(options.email, options.password, options.blockchain, options.message);
   });
 
 program
@@ -662,6 +720,14 @@ program
   .option('-p, --password <password>', 'Network access password')
   .action(async (options) => {
     await addGuardian(options.email, options.guardianNodeId, options.password);
+  });
+
+program
+  .command('deregister-guardian')
+  .description('Deregister a guardian by deleting it from the filesystem.')
+  .option('-i, --nodeId <nodeId>', 'Node ID of the guardian to deregister')
+  .action(async (options) => {
+    await deregisterGuardian(options.nodeId);
   });
 
 program
