@@ -197,7 +197,7 @@ const showNetwork = async () => {
     return acc;
   }, {});
 
-  const ownerGuardian = (guardianGroups['ownerGuardian'] || [])[0]; // there can only be one owner guardian
+  const ownerGuardian = guardianGroups['ownerGuardian'] || [];
   const localGuardians = guardianGroups['localGuardian'] || [];
   const socialGuardians = guardianGroups['socialGuardian'] || [];
   const cloudGuardians = guardianGroups['cloudGuardian'] || [];
@@ -219,7 +219,7 @@ const showNetwork = async () => {
     });
   };
 
-  ownerGuardian && printGuardians('👑 Owner Guardian', [ownerGuardian]);
+  printGuardians('👑 Owner Guardian', ownerGuardian);
   printGuardians('🏡 Local Guardians', localGuardians);
   printGuardians('👥 Social Guardians', socialGuardians);
   printGuardians('🌥️  Cloud Guardians', cloudGuardians);
@@ -529,10 +529,6 @@ const createWallet = async (email, password, blockchain) => {
     blockchain = answers.blockchain;
   }
 
-  myNodeId - uuidv4();
-  trustedNodes = [dasfadsfadsfdsa, asdfadsfdsaf, adsfadsfdsf];
-
-
   const user = loadUser(email);
   if (!user) {
     console.error('User not found');
@@ -625,16 +621,16 @@ const addGuardian = async (email, guardianNodeId, password) => {
 
   if (!guardian) {
     spinner.fail('Guardian not found.');
-
     return;
   }
 
-  try {
-    await gridlock.addGuardian(guardian);
+  const response = await gridlock.addGuardian(guardian);
+  if (response.success) {
+    saveUser(response.data);
     spinner.succeed('Guardian assigned successfully');
-  } catch (error) {
+  } else {
     spinner.fail('Failed to assign guardian.');
-    console.error('Failed to assign guardian:', error.message);
+    console.error('Failed to assign guardian:', response.error.message);
   }
 };
 
@@ -642,7 +638,7 @@ const deregisterGuardian = async (nodeId) => {
   const filePath = path.join(GUARDIANS_DIR, `${nodeId}.guardian.json`);
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
-    console.log(`Guardian ${nodeId} has been assigned to user.`);
+    console.log(`Guardian ${nodeId} has been removed`);
   } else {
     console.error(`Guardian with Node ID ${nodeId} not found.`);
   }
