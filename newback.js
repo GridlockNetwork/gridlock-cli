@@ -183,7 +183,7 @@ const guardianTypeMap = {
   'Gridlock Guardian': 'gridlockGuardian',
   'Partner Guardian': 'partnerGuardian',
 };
-const showNetwork = async () => {
+const showAvailableGuardians = async () => {
   const spinner = ora('Retrieving network status...').start();
   const guardians = loadGuardians();
 
@@ -197,7 +197,6 @@ const showNetwork = async () => {
     return acc;
   }, {});
 
-  const ownerGuardian = guardianGroups['ownerGuardian'] || [];
   const localGuardians = guardianGroups['localGuardian'] || [];
   const socialGuardians = guardianGroups['socialGuardian'] || [];
   const cloudGuardians = guardianGroups['cloudGuardian'] || [];
@@ -219,7 +218,6 @@ const showNetwork = async () => {
     });
   };
 
-  printGuardians('👑 Owner Guardian', ownerGuardian);
   printGuardians('🏡 Local Guardians', localGuardians);
   printGuardians('👥 Social Guardians', socialGuardians);
   printGuardians('🌥️  Cloud Guardians', cloudGuardians);
@@ -227,12 +225,57 @@ const showNetwork = async () => {
   printGuardians('🤝 Partner Guardians', partnerGuardians);
 
   console.log('-----------------------------------');
+  return;
+};
+
+const showNetwork = async (email) => {
+  const spinner = ora('Retrieving user guardians...').start();
+  const user = loadUser(email);
+
+  if (!user) {
+    spinner.fail('User not found');
+    return;
+  }
+
+  const guardians = user.nodePool || [];
+
+  spinner.succeed('User guardians retrieved successfully');
+  console.log(chalk.bold(`\n🌐 Guardians for ${chalk.hex('#4A90E2').bold(user.name)}`));
+  console.log('-----------------------------------');
+
+  const emojiMap = {
+    localGuardian: '🏡',
+    socialGuardian: '👥',
+    cloudGuardian: '🌥️ ',
+    gridlockGuardian: '🛡️ ',
+    partnerGuardian: '🤝',
+  };
+
+  const ownerGuardianNodeId = user.ownerGuardian.nodeId;
+
+  guardians.forEach((guardian, index) => {
+    const emoji = emojiMap[guardian.type] || '';
+    const isOwnerGuardian = guardian.nodeId === ownerGuardianNodeId;
+    const crown = isOwnerGuardian ? '👑' : '';
+    console.log(`       ${chalk.bold('Name:')} ${guardian.name} ${crown}`);
+    console.log(`       ${chalk.bold('Type:')} ${emoji} ${Object.keys(guardianTypeMap).find(key => guardianTypeMap[key] === guardian.type)}`);
+    console.log(`       ${chalk.bold('Node ID:')} ${guardian.nodeId}`);
+    console.log(`       ${chalk.bold('Public Key:')} ${guardian.publicKey}`);
+    const status = guardian.active ? chalk.green('ACTIVE') : chalk.red('INACTIVE');
+    console.log(`       ${chalk.bold('Status:')} ${status}`);
+    if (index < guardians.length - 1) {
+      console.log('       ---');
+    }
+  });
+
+  console.log('-----------------------------------');
   const threshold = 3;
   const thresholdCheck = guardians.length >= threshold ? chalk.green('✅') : chalk.red('❌');
   console.log(`Total Guardians: ${guardians.length} | Threshold: ${threshold} of ${guardians.length} ${thresholdCheck}`);
   return;
 };
-const registerGuardian = async (guardianType, name, nodeId, publicKey, isOwnerGuardian, password, seed) => {
+
+const addGuardian = async (email, password, guardianType, isOwnerGuardian, name, nodeId, publicKey) => {
   console.log('Adding guardian...');
   if (!guardianType) {
     const answers = await inquirer.prompt([
@@ -241,75 +284,22 @@ const registerGuardian = async (guardianType, name, nodeId, publicKey, isOwnerGu
         name: 'guardianType',
         message: 'Select the type of guardian to add:',
         choices: [
-          // { name: 'Local Guardian', value: 'local' },
           { name: 'Gridlock Guardian', value: 'gridlock' },
           { name: 'Cloud Guardian', value: 'cloud' },
         ],
       },
     ]);
     guardianType = answers.guardianType;
-    // console.log('Selected guardian type: ', guardianType);
   }
-  if (guardianType === 'local') {
-    await registerGuardianLocal(name, isOwnerGuardian, password);
-  } else if (guardianType === 'gridlock') {
-    await registerGuardianGridlock();
+  if (guardianType === 'gridlock') {
+    await addGuardianGridlock();
   } else if (guardianType === 'cloud') {
-    await registerGuardianCloud(name, nodeId, publicKey, isOwnerGuardian, password, seed);
+    await addCloudGuardian(email, password, name, nodeId, publicKey, isOwnerGuardian);
   } else {
     console.error('Invalid guardian type. Please specify "gridlock" or "cloud".');
   }
 };
-const registerGuardianLocal = async (name, isOwnerGuardian, password) => {
-  if (!name || !isOwnerGuardian || !password) {
-    const answers = await inquirer.prompt([
-      { type: 'input', name: 'name', message: 'Guardian name:' },
-      { type: 'confirm', name: 'isOwnerGuardian', message: 'Is this the owner guardian?', default: false },
-      { type: 'password', name: 'password', message: 'Enter a password for encrypting the identity key:' },
-    ]);
-    name = answers.name;
-    isOwnerGuardian = answers.isOwnerGuardian;
-    password = answers.password;
-  }
 
-  const spinner = ora('Adding local guardian...').start();
-  const guardians = loadGuardians();
-  if (isOwnerGuardian) {
-    const ownerGuardians = guardians.filter(g => g.type === 'ownerGuardian');
-    if (ownerGuardians.length > 0) {
-      console.error('An owner guardian already exists in the database. Delete the existing owner guardian before adding a new one.');
-      return;
-    }
-  }
-
-  const guardian = {
-    nodeId: uuidv4(),
-    name,
-    type: isOwnerGuardian ? 'ownerGuardian' : 'localGuardian',
-    active: true,
-  };
-
-  // Generate identity key pair for E2E communication, saving the public key to the guardian object, saving the private key encrypted
-  const { privateKey, publicKey } = await generateIdentityKey(password);
-  guardian.publicKey = publicKey;
-  saveKey(guardian.nodeId, { ...privateKey, type: 'identity', description: 'Asymmetric Identity key used for E2E communication' }, 'identity');
-
-  // Generate signing key for ownerGuardian to signing actions
-  const encryptedSigningKey = await generateSigningKey(password);
-  saveKey(guardian.nodeId, { ...encryptedSigningKey, type: 'signing', description: 'Symmetric Signing key used for signing actions' }, 'signing');
-
-
-  saveGuardian(guardian);
-
-  spinner.succeed('Local guardian added successfully');
-  console.log(chalk.bold('\n➕ New Local Guardian:'));
-  console.log(`     ${chalk.bold('Name:')} ${guardian.name}`);
-  console.log(`     ${chalk.bold('Type:')} ${Object.keys(guardianTypeMap).find(key => guardianTypeMap[key] === guardian.type)}`);
-  console.log(`     ${chalk.bold('Node ID:')} ${guardian.nodeId}`);
-  console.log(`     ${chalk.bold('Public Key:')} ${guardian.publicKey}`);
-
-  await showNetwork();
-};
 const getGridlockGuardian = async () => {
   const spinner = ora('Retrieving Gridlock guardians...').start();
   const response = await gridlock.getGridlockGuardian()
@@ -322,7 +312,8 @@ const getGridlockGuardian = async () => {
   spinner.succeed('Gridlock guardians retrieved successfully');
   return guardians;
 };
-const registerGuardianGridlock = async () => {
+const addGuardianGridlock = async () => {
+  //probably doesn't work anymore with most recent code changes
   const spinner = ora('Retrieving Gridlock guardian...').start();
   const gridlockGuardians = await getGridlockGuardian();
   if (!gridlockGuardians) {
@@ -341,79 +332,7 @@ const registerGuardianGridlock = async () => {
 
   saveGuardian(newGuardian);
   spinner.succeed('Gridlock guardian retrieved and saved successfully');
-  await showNetwork();
-};
-
-const registerGuardianCloud = async (name, nodeId, publicKey, isOwnerGuardian, password, seed) => {
-  const guardians = loadGuardians();
-  if (isOwnerGuardian) {
-    const ownerGuardians = guardians.filter(g => g.type === 'ownerGuardian');
-    if (ownerGuardians.length > 0) {
-      console.error('An owner guardian already exists. Please create a user first.');
-      return;
-    }
-  }
-  if (!name || !nodeId || !publicKey || (isOwnerGuardian && !seed)) {
-    const answers = await inquirer.prompt([
-      { type: 'input', name: 'name', message: 'Guardian name:' },
-      { type: 'input', name: 'nodeId', message: 'Node ID:' },
-      { type: 'input', name: 'publicKey', message: 'Guardian public key:' },
-      { type: 'confirm', name: 'isOwnerGuardian', message: 'Is this the owner guardian?', default: false },
-      { type: 'password', name: 'password', message: 'Enter a password for encrypting the identity key:' },
-    ]);
-    name = answers.name;
-    nodeId = answers.nodeId;
-    publicKey = answers.publicKey;
-    isOwnerGuardian = answers.isOwnerGuardian;
-    password = answers.password;
-
-    if (isOwnerGuardian) {
-      const seedAnswer = await inquirer.prompt([
-        { type: 'input', name: 'seed', message: 'Seed (if owner guardian):' },
-      ]);
-      seed = seedAnswer.seed;
-    }
-  }
-
-  const spinner = ora('Adding guardian...').start();
-
-  if (isOwnerGuardian) {
-    console.log('Seed:', seed); //debug
-    const keyPair = fromSeed(Buffer.from(seed, 'utf8'));
-    const derivedPublicKey = keyPair.getPublicKey();
-    console.log('Derived public key:', derivedPublicKey); //debug
-    if (derivedPublicKey !== publicKey) {
-      console.error('The provided seed does not match the public key.');
-      return;
-    }
-
-    try {
-      const encryptedSeed = await encryptKey(Buffer.from(seed, 'utf8'), password);
-      saveKey(nodeId, { ...encryptedSeed, type: 'identity', description: 'Identity key' }, 'identity');
-    } catch (error) {
-      console.error('Failed to save private key:', error.message);
-      return;
-    }
-
-  }
-
-  const guardian = {
-    nodeId,
-    name,
-    type: isOwnerGuardian ? 'ownerGuardian' : 'cloudGuardian',
-    active: true,
-    publicKey,
-  };
-
-
-  saveGuardian(guardian);
-
-  if (isOwnerGuardian) {
-
-  }
-
-  spinner.succeed('Guardian added successfully');
-  await showNetwork();
+  await showAvailableGuardians();
 };
 
 const login = async (email, password) => {
@@ -455,7 +374,6 @@ const loginWithKey = async (email, password) => {
 
   const { nodeId } = user.ownerGuardian;
 
-  console.log('NodeId debug: ', nodeId); //debug
   const privateKeyObject = loadKey(nodeId, 'identity');
   if (!privateKeyObject) {
     spinner.fail('Owner guardian private key not found.');
@@ -475,32 +393,21 @@ const loginWithKey = async (email, password) => {
   }
 };
 
-const createUser = async (name, email, password) => {
-  if (!name || !email || !password) {
+const createUser = async (name, email) => {
+  if (!name || !email) {
     const answers = await inquirer.prompt([
       { type: 'input', name: 'name', message: 'User name:' },
       { type: 'input', name: 'email', message: 'User email:' },
-      { type: 'input', name: 'password', message: 'Password:' }, // keep type as input instead of password for demo purposes
     ]);
     name = answers.name;
     email = answers.email;
-    password = answers.password;
   }
 
   const spinner = ora('Creating user...').start();
 
-  const guardians = loadGuardians();
-  const ownerGuardian = guardians.find(g => g.type === 'ownerGuardian');
-  if (!ownerGuardian) {
-    spinner.fail('No owner guardian found. Please add an owner guardian first.');
-    return;
-  }
-
   const registerData = {
     name,
     email,
-    password,
-    ownerGuardian: ownerGuardian,
   };
 
   const response = await gridlock.createUser(registerData);
@@ -511,10 +418,7 @@ const createUser = async (name, email, password) => {
   const { user, tokens } = response.data;
   saveTokens(tokens, email);
   saveUser(user);
-  spinner.succeed(`➕ Created account for user: ${user.name}`);
-
-  // Deregister the owner guardian on success
-  await deregisterGuardian(ownerGuardian.nodeId);
+  spinner.succeed(`➕ Created account for user: ${chalk.hex('#4A90E2').bold(user.name)}`);
 };
 
 const createWallet = async (email, password, blockchain) => {
@@ -588,43 +492,44 @@ const signTransaction = async (email, password, blockchain, message) => {
   console.log(`Signature: ${response.data}`);
 };
 
-const addGuardian = async (email, guardianNodeId, password) => {
-  if (!email || !guardianNodeId || !password) {
+const addCloudGuardian = async (email, password, name, nodeId, publicKey, isOwnerGuardian) => {
+  if (!email || !name || !nodeId || !publicKey || !password) {
     const answers = await inquirer.prompt([
       { type: 'input', name: 'email', message: 'User email:' },
-      { type: 'password', name: 'password', message: 'Network access password:' },
+      { type: 'password', name: 'password', message: 'Enter a password for encrypting the identity key:' },
+      { type: 'input', name: 'name', message: 'Guardian name:' },
+      { type: 'input', name: 'nodeId', message: 'Node ID:' },
+      { type: 'input', name: 'publicKey', message: 'Guardian public key:' },
+      { type: 'confirm', name: 'isOwnerGuardian', message: 'Is this the owner guardian?', default: false },
+
     ]);
     email = answers.email;
     password = answers.password;
+    name = answers.name;
+    nodeId = answers.nodeId;
+    publicKey = answers.publicKey;
+    isOwnerGuardian = answers.isOwnerGuardian;
   }
 
-  const guardians = loadGuardians();
-  if (!guardianNodeId) {
-    const guardianChoices = guardians.map(g => ({
-      name: `${g.name} (${g.nodeId})`,
-      value: g.nodeId,
-    }));
-    const guardianAnswer = await inquirer.prompt([
-      { type: 'list', name: 'guardianNodeId', message: 'Select a guardian:', choices: guardianChoices },
-    ]);
-    guardianNodeId = guardianAnswer.guardianNodeId;
-  }
+  const spinner = ora('Adding guardian...').start();
 
-  const spinner = ora('Assigning guardian...').start();
+  const guardian = {
+    name,
+    type: 'cloudGuardian',
+    nodeId,
+    publicKey,
+    active: true,
+  };
+
+  saveGuardian(guardian);
+
   const token = await login(email, password);
   if (!token) {
     spinner.fail('Login failed.');
     return;
   }
 
-  const guardian = guardians.find(g => g.nodeId === guardianNodeId);
-
-  if (!guardian) {
-    spinner.fail('Guardian not found.');
-    return;
-  }
-
-  const response = await gridlock.addGuardian(guardian);
+  const response = await gridlock.addGuardian(guardian, !!isOwnerGuardian);
   if (response.success) {
     saveUser(response.data);
     spinner.succeed('Guardian assigned successfully');
@@ -659,9 +564,17 @@ program.hook('postAction', () => {
 });
 
 program
-  .command('show-network')
+  .command('show-available-guardians')
   .description('Displays the status of all guardians in the network')
-  .action(showNetwork);
+  .action(showAvailableGuardians);
+
+program
+  .command('show-network')
+  .description('Displays the guardians associated with a specific user')
+  .option('-e, --email <email>', 'User email')
+  .action(async (options) => {
+    await showNetwork(options.email);
+  });
 
 program
   .command('register-guardian')
@@ -682,9 +595,8 @@ program
   .description('Create a new user')
   .option('-n, --name <name>', 'User name')
   .option('-e, --email <email>', 'User email')
-  .option('-p, --password <password>', 'Network access password')
   .action(async (options) => {
-    await createUser(options.name, options.email, options.password);
+    await createUser(options.name, options.email);
   });
 
 program
@@ -712,10 +624,14 @@ program
   .command('add-guardian')
   .description('Add a guardian to a specific user\'s node pool')
   .option('-e, --email <email>', 'User email')
-  .option('-g, --guardianNodeId <guardianNodeId>', 'Guardian node ID')
-  .option('-p, --password <password>', 'Network access password')
+  .option('-p, --password <password>', 'User password')
+  .option('-t, --type <type>', 'Type of guardian (cloud or gridlock)')
+  .option('-o, --owner', 'Is this the owner guardian')
+  .option('-n, --name <name>', 'Guardian name')
+  .option('-i, --nodeId <nodeId>', 'Guardian node ID')
+  .option('-k, --publicKey <publicKey>', 'Guardian public key')
   .action(async (options) => {
-    await addGuardian(options.email, options.guardianNodeId, options.password);
+    await addGuardian(options.email, options.password, options.type, options.owner, options.name, options.nodeId, options.publicKey);
   });
 
 program
