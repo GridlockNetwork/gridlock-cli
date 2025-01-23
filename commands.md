@@ -8,7 +8,7 @@ docker run --name guardian2 -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/l
 
 # Create a user
 ```bash
-clear && node newback.js create-user -n derek -e 1@1.com
+clear && node newback.js create-user -n "derek rodriguez" -e 1@1.com
 ```
 
 # Add a guardian to a user

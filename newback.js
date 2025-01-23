@@ -6,7 +6,6 @@ import GridlockSdk from 'gridlock-sdk';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
-import os from 'os';
 import { generateKeyPairSync } from 'crypto';
 import argon2 from 'argon2';
 import crypto from 'crypto';
@@ -21,8 +20,30 @@ import { log } from 'console';
 import nacl from 'tweetnacl';
 import { fromSeed } from '@nats-io/nkeys';
 import base32 from 'base32.js';
-const { Decoder } = base32;
+import {
+  saveTokens,
+  loadToken,
+  saveKey,
+  loadKey,
+  saveGuardian,
+  loadGuardians,
+  saveUser,
+  loadUser
+} from './storage.managment.js'
+import {
+  deriveKey,
+  encryptKey,
+  decryptKey,
+  generateSigningKey,
+  generateIdentityKey,
+  nodeSigningKey
+} from './key.management.js';
+import {
+  showNetwork,
+  showAvailableGuardians
+} from './network.managment.js'
 
+const { Decoder } = base32;
 
 const gridlock = new GridlockSdk({
   apiKey: API_KEY,
@@ -31,249 +52,7 @@ const gridlock = new GridlockSdk({
   logger: console,
 });
 
-// ---------------- DATA MANAGEMENT FUNCTIONS -------------------
-
-const GUARDIANS_DIR = path.join(os.homedir(), '.gridlock-cli', 'guardians');
-const USERS_DIR = path.join(os.homedir(), '.gridlock-cli', 'users');
-const TOKENS_DIR = path.join(os.homedir(), '.gridlock-cli', 'tokens');
-const KEYS_DIR = path.join(os.homedir(), '.gridlock-cli', 'keys');
-
-const saveGuardian = (guardian) => {
-  if (!fs.existsSync(GUARDIANS_DIR)) {
-    fs.mkdirSync(GUARDIANS_DIR, { recursive: true });
-  }
-  const filePath = path.join(GUARDIANS_DIR, `${guardian.nodeId}.guardian.json`);
-  fs.writeFileSync(filePath, JSON.stringify(guardian, null, 2));
-};
-const loadGuardians = () => {
-  if (!fs.existsSync(GUARDIANS_DIR)) {
-    return [];
-  }
-  return fs.readdirSync(GUARDIANS_DIR).map(file => {
-    const filePath = path.join(GUARDIANS_DIR, file);
-    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  });
-};
-const saveUser = (user) => {
-  if (!fs.existsSync(USERS_DIR)) {
-    fs.mkdirSync(USERS_DIR, { recursive: true });
-  }
-  const filePath = path.join(USERS_DIR, `${user.email}.user.json`);
-  fs.writeFileSync(filePath, JSON.stringify(user, null, 2) + '\n');
-};
-const loadUser = (email) => {
-  const filePath = path.join(USERS_DIR, `${email}.user.json`);
-  if (!fs.existsSync(filePath)) {
-    return null;
-  }
-  return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-};
-const saveTokens = (tokens, email) => {
-  if (!fs.existsSync(TOKENS_DIR)) {
-    fs.mkdirSync(TOKENS_DIR, { recursive: true });
-  }
-  const filePath = path.join(TOKENS_DIR, `${email}.tokens.json`);
-  fs.writeFileSync(filePath, JSON.stringify(tokens, null, 2) + '\n');
-};
-const loadToken = (email, type = 'access') => {
-  const filePath = path.join(TOKENS_DIR, `${email}.tokens.json`);
-  if (!fs.existsSync(filePath)) {
-    return null;
-  }
-  const tokens = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  return tokens[type].token;
-};
-const saveKey = (nodeId, keyObject, type) => {
-  if (!fs.existsSync(KEYS_DIR)) {
-    fs.mkdirSync(KEYS_DIR, { recursive: true });
-  }
-  const checksum = crypto.createHash('sha256').update(JSON.stringify(keyObject)).digest('hex');
-  const filePath = path.join(KEYS_DIR, `${nodeId}.${type}.key.json`);
-  fs.writeFileSync(filePath, JSON.stringify({ ...keyObject, checksum }, null, 2));
-};
-const deriveKey = async (password, salt) => {
-  return new Promise((resolve, reject) => {
-    crypto.scrypt(password, salt, 32, { N: 16384, r: 8, p: 1 }, (err, derivedKey) => {
-      if (err) reject(err);
-      else resolve(derivedKey);
-    });
-  });
-};
-const encryptKey = async (key, password) => {
-  const salt = crypto.randomBytes(16);
-  const derivedKey = await deriveKey(password, salt);
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', derivedKey, iv);
-  const encryptedKey = Buffer.concat([cipher.update(key), cipher.final()]);
-  const authTag = cipher.getAuthTag();
-  key.fill(0);
-
-  return {
-    key: encryptedKey.toString('base64'),
-    iv: iv.toString('base64'),
-    authTag: authTag.toString('base64'),
-    salt: salt.toString('base64'),
-    algorithm: 'aes-256-gcm',
-    createdAt: new Date().toISOString(),
-  };
-};
-const decryptKey = async (encryptedKeyObject, password) => {
-  try {
-    const { key, iv, authTag, salt } = encryptedKeyObject;
-    const derivedKey = await deriveKey(password, Buffer.from(salt, 'base64'));
-    const decipher = crypto.createDecipheriv('aes-256-gcm', derivedKey, Buffer.from(iv, 'base64'));
-    decipher.setAuthTag(Buffer.from(authTag, 'base64'));
-    const decryptedKey = Buffer.concat([decipher.update(Buffer.from(key, 'base64')), decipher.final()]);
-    return decryptedKey;
-  } catch (error) {
-    console.error('Failed to decrypt key:', error.message);
-    throw new Error('Decryption failed. Please check your password and try again.');
-  }
-};
-const generateSigningKey = async (password) => {
-  const signingKey = crypto.randomBytes(32);
-  return await encryptKey(signingKey, password);
-};
-const generateIdentityKey = async (password) => {
-  const { privateKey, publicKey } = generateKeyPairSync('ed25519', {
-    publicKeyEncoding: { type: 'spki', format: 'der' },
-    privateKeyEncoding: { type: 'pkcs8', format: 'der' },
-  });
-  const encryptedPrivateKey = await encryptKey(privateKey, password);
-  return { privateKey: encryptedPrivateKey, publicKey: publicKey.toString('base64') };
-};
-const loadKey = (nodeId, type) => {
-  const filePath = path.join(KEYS_DIR, `${nodeId}.${type}.key.json`);
-  if (!fs.existsSync(filePath)) {
-    return null;
-  }
-  const keyObject = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  const { checksum, ...keyData } = keyObject;
-  const calculatedChecksum = crypto.createHash('sha256').update(JSON.stringify(keyData)).digest('hex');
-  if (checksum !== calculatedChecksum) {
-    throw new Error('Key file integrity check failed. The file may be corrupted or tampered with.');
-  }
-  return keyData;
-};
-/**
- * Derives a stronger, unique node-specific key using HKDF.
- * @param {Buffer} signingKey - The encrypted signing key.
- * @param {string} nodeId - The unique node ID.
- * @returns {string} - A unique per-node derived key.
- */
-const nodeSigningKey = (signingKey, nodeId) => {
-  return crypto.hkdfSync(
-    'sha256',                      // Hash function
-    signingKey,                    // Input key material
-    Buffer.from(nodeId),           // Salt (adds uniqueness)
-    Buffer.from('node-auth'),      // Info (context-specific label)
-    32                             // Output length (256-bit key)
-  ).toString('hex');
-};
-
-// ---------------- CLI FUNCTIONS ----------------
-
 let verbose = false;
-
-const guardianTypeMap = {
-  'Owner Guardian': 'ownerGuardian',
-  'Local Guardian': 'localGuardian',
-  'Social Guardian': 'socialGuardian',
-  'Cloud Guardian': 'cloudGuardian',
-  'Gridlock Guardian': 'gridlockGuardian',
-  'Partner Guardian': 'partnerGuardian',
-};
-const showAvailableGuardians = async () => {
-  const spinner = ora('Retrieving network status...').start();
-  const guardians = loadGuardians();
-
-  spinner.succeed('Network status retrieved successfully');
-  console.log(chalk.bold('\n🌐 Guardians in the Network:'));
-  console.log('-----------------------------------');
-
-  const guardianGroups = guardians.reduce((acc, guardian) => {
-    acc[guardian.type] = acc[guardian.type] || [];
-    acc[guardian.type].push(guardian);
-    return acc;
-  }, {});
-
-  const localGuardians = guardianGroups['localGuardian'] || [];
-  const socialGuardians = guardianGroups['socialGuardian'] || [];
-  const cloudGuardians = guardianGroups['cloudGuardian'] || [];
-  const gridlockGuardians = guardianGroups['gridlockGuardian'] || [];
-  const partnerGuardians = guardianGroups['partnerGuardian'] || [];
-
-  const printGuardians = (title, guardians) => {
-    console.log(chalk.bold(`\n${title}:`));
-    guardians.forEach((guardian, index) => {
-      console.log(`       ${chalk.bold('Name:')} ${guardian.name}`);
-      console.log(`       ${chalk.bold('Type:')} ${Object.keys(guardianTypeMap).find(key => guardianTypeMap[key] === guardian.type)}`);
-      console.log(`       ${chalk.bold('Node ID:')} ${guardian.nodeId}`);
-      console.log(`       ${chalk.bold('Public Key:')} ${guardian.publicKey}`);
-      const status = guardian.active ? chalk.green('ACTIVE') : chalk.red('INACTIVE');
-      console.log(`       ${chalk.bold('Status:')} ${status}`);
-      if (index < guardians.length - 1) {
-        console.log('       ---');
-      }
-    });
-  };
-
-  printGuardians('🏡 Local Guardians', localGuardians);
-  printGuardians('👥 Social Guardians', socialGuardians);
-  printGuardians('🌥️  Cloud Guardians', cloudGuardians);
-  printGuardians('🛡️  Gridlock Guardians', gridlockGuardians);
-  printGuardians('🤝 Partner Guardians', partnerGuardians);
-
-  console.log('-----------------------------------');
-  return;
-};
-
-const showNetwork = async (email) => {
-  const spinner = ora('Retrieving user guardians...').start();
-  const user = loadUser(email);
-
-  if (!user) {
-    spinner.fail('User not found');
-    return;
-  }
-
-  const guardians = user.nodePool || [];
-
-  spinner.succeed('User guardians retrieved successfully');
-  console.log(chalk.bold(`\n🌐 Guardians for ${chalk.hex('#4A90E2').bold(user.name)}`));
-  console.log('-----------------------------------');
-
-  const emojiMap = {
-    localGuardian: '🏡',
-    socialGuardian: '👥',
-    cloudGuardian: '🌥️ ',
-    gridlockGuardian: '🛡️ ',
-    partnerGuardian: '🤝',
-  };
-
-  const ownerGuardianNodeId = user.ownerGuardian.nodeId;
-
-  guardians.forEach((guardian, index) => {
-    const emoji = emojiMap[guardian.type] || '';
-    const isOwnerGuardian = guardian.nodeId === ownerGuardianNodeId;
-    const crown = isOwnerGuardian ? '👑' : '';
-    console.log(`       ${chalk.bold('Name:')} ${guardian.name} ${crown}`);
-    console.log(`       ${chalk.bold('Type:')} ${emoji} ${Object.keys(guardianTypeMap).find(key => guardianTypeMap[key] === guardian.type)}`);
-    console.log(`       ${chalk.bold('Node ID:')} ${guardian.nodeId}`);
-    console.log(`       ${chalk.bold('Public Key:')} ${guardian.publicKey}`);
-    const status = guardian.active ? chalk.green('ACTIVE') : chalk.red('INACTIVE');
-    console.log(`       ${chalk.bold('Status:')} ${status}`);
-    if (index < guardians.length - 1) {
-      console.log('       ---');
-    }
-  });
-
-  console.log('-----------------------------------');
-  const threshold = 3;
-  const thresholdCheck = guardians.length >= threshold ? chalk.green('✅') : chalk.red('❌');
-  console.log(`Total Guardians: ${guardians.length} | Threshold: ${threshold} of ${guardians.length} ${thresholdCheck}`);
-  return;
-};
 
 const addGuardian = async (email, password, guardianType, isOwnerGuardian, name, nodeId, publicKey) => {
   console.log('Adding guardian...');
@@ -406,8 +185,8 @@ const createUser = async (name, email) => {
   const spinner = ora('Creating user...').start();
 
   const registerData = {
-    name,
-    email,
+    name: name.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' '),
+    email: email.toLowerCase(),
   };
 
   const response = await gridlock.createUser(registerData);
@@ -549,6 +328,17 @@ const deregisterGuardian = async (nodeId) => {
   }
 };
 
+const showNetworkPrompt = async () => {
+  const answers = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'email',
+      message: 'Please enter the user email:',
+    },
+  ]);
+  await showNetwork(answers.email);
+};
+
 // ---------------- CLI INTERFACE ----------------
 
 program.option('-v, --verbose', 'Enable verbose output').hook('preAction', async (thisCommand) => {
@@ -573,7 +363,11 @@ program
   .description('Displays the guardians associated with a specific user')
   .option('-e, --email <email>', 'User email')
   .action(async (options) => {
-    await showNetwork(options.email);
+    if (options.email) {
+      await showNetwork(options.email);
+    } else {
+      await showNetworkPrompt();
+    }
   });
 
 program
