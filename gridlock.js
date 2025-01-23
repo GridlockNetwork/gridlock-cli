@@ -2,29 +2,13 @@ import { program } from 'commander';
 import inquirer from 'inquirer';
 import GridlockSdk from 'gridlock-sdk';
 
-import {
-  API_KEY,
-  BASE_URL,
-  DEBUG_MODE,
-} from './constants.js';
+import { API_KEY, BASE_URL, DEBUG_MODE } from './constants.js';
 import { SUPPORTED_COINS } from 'gridlock-sdk';
-import {
-  showNetwork,
-  showAvailableGuardians
-} from './network.managment.js'
-import {
-  addGridlockGuardian,
-  addCloudGuardian,
-} from './guardian.management.js';
-import {
-  login,
-} from './login.management.js';
-import {
-  createWallet,
-  signTransaction
-} from './wallet.management.js';
+import { showNetwork, showAvailableGuardians } from './network.managment.js';
+import { addGridlockGuardian, addCloudGuardian } from './guardian.management.js';
+import { login } from './login.management.js';
+import { createWallet, signTransaction } from './wallet.management.js';
 import { createUser } from './user.management.js';
-
 
 export const gridlock = new GridlockSdk({
   apiKey: API_KEY,
@@ -35,7 +19,15 @@ export const gridlock = new GridlockSdk({
 
 let verbose = false;
 
-const addGuardianInquire = async (email, password, guardianType, isOwnerGuardian, name, nodeId, publicKey) => {
+const addGuardianInquire = async (
+  email,
+  password,
+  guardianType,
+  isOwnerGuardian,
+  name,
+  nodeId,
+  publicKey
+) => {
   console.log('Adding guardian...');
   if (!guardianType) {
     const answers = await inquirer.prompt([
@@ -61,7 +53,12 @@ const addGuardianInquire = async (email, password, guardianType, isOwnerGuardian
         { type: 'input', name: 'name', message: 'Guardian name:' },
         { type: 'input', name: 'nodeId', message: 'Node ID:' },
         { type: 'input', name: 'publicKey', message: 'Guardian public key:' },
-        { type: 'confirm', name: 'isOwnerGuardian', message: 'Is this the owner guardian?', default: false },
+        {
+          type: 'confirm',
+          name: 'isOwnerGuardian',
+          message: 'Is this the owner guardian?',
+          default: false,
+        },
       ]);
       email = answers.email;
       password = answers.password;
@@ -145,7 +142,7 @@ program
 
 program
   .command('register-guardian')
-  .description('Register a new guardian that\'s available for user node pool creation.')
+  .description("Register a new guardian that's available for user node pool creation.")
   .option('-t, --type <type>', 'Type of guardian (cloud or gridlock)')
   .option('-n, --name <name>', 'Guardian name')
   .option('-o, --owner', 'Is this the owner guardian')
@@ -154,7 +151,15 @@ program
   .option('-k, --publicKey <publicKey>', 'Guardian public key')
   .option('-s, --seed <seed>', 'Seed (if owner guardian)')
   .action(async (options) => {
-    await registerGuardian(options.type, options.name, options.nodeId, options.publicKey, options.owner, options.password, options.seed);
+    await registerGuardian(
+      options.type,
+      options.name,
+      options.nodeId,
+      options.publicKey,
+      options.owner,
+      options.password,
+      options.seed
+    );
   });
 
 program
@@ -201,7 +206,7 @@ program
 
 program
   .command('add-guardian')
-  .description('Add a guardian to a specific user\'s node pool')
+  .description("Add a guardian to a specific user's node pool")
   .option('-e, --email <email>', 'User email')
   .option('-p, --password <password>', 'User password')
   .option('-t, --type <type>', 'Type of guardian (cloud or gridlock)')
@@ -210,7 +215,15 @@ program
   .option('-i, --nodeId <nodeId>', 'Guardian node ID')
   .option('-k, --publicKey <publicKey>', 'Guardian public key')
   .action(async (options) => {
-    await addGuardianInquire(options.email, options.password, options.type, options.owner, options.name, options.nodeId, options.publicKey);
+    await addGuardianInquire(
+      options.email,
+      options.password,
+      options.type,
+      options.owner,
+      options.name,
+      options.nodeId,
+      options.publicKey
+    );
   });
 
 program
@@ -230,5 +243,3 @@ program
 // ---------------- RUN PROGRAM ----------------
 
 await program.parseAsync(process.argv);
-
-

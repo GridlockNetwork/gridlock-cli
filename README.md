@@ -3,25 +3,28 @@
 CLI for quick actions: user creation, wallet creation, wallet actions (sign message, verify message), verify user network etc.
 
 ### Prerequisite
+
 1. Run the staging server locally and checkout to the branch `gridlock-sdk`.
 2. Run `ngrok http 8080` and keep the generated link for later use.
 
 ## How to run all on staging:
 
 1. **Run partner guardians:**
+
 ```sh
    docker run --name partner-nodes-1 -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
 ```
-
 
 ```sh
    docker run --name partner-nodes-2 -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
 ```
 
 or start and folow the logs of an existing container
+
 ```sh
 docker start partner-nodes-1 && docker logs -f partner-nodes-1
 ```
+
 ```sh
 docker start partner-nodes-2 && docker logs -f partner-nodes-2
 ```
@@ -40,8 +43,6 @@ git clone https://github.com/GridlockNetwork/gridlock-sdk
 
 4. **Run the following commands in the gridlock-sdk directory:**
 
-
-
 ```sh
 yarn
 yarn link
@@ -49,8 +50,6 @@ yarn build:watch
 ```
 
 Leave the terminal running for development.
-
-
 
 5. **Using other terminal window checkout and clone the gridlock-sdk-cli repository in the same parent folder as the gridlock-sdk:**
 

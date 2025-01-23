@@ -34,9 +34,7 @@ const verifyOptionCoinType = (options) => {
 
 const userSchema = yup.object().shape({
   email: yup.string().email('Invalid email format').required('Email is required'),
-  password: yup
-    .string()
-    .required('Password is required'),
+  password: yup.string().required('Password is required'),
 });
 
 // token + nodeId + nodePublicKey
@@ -62,7 +60,13 @@ const initUser = async (email) => {
 
     if (response.success) {
       const payload = response.payload;
-      authData = { email, userId, token: payload.token, nodeId: payload.user.nodeId, nodePublicKey: payload.user.nodePublicKey };
+      authData = {
+        email,
+        userId,
+        token: payload.token,
+        nodeId: payload.user.nodeId,
+        nodePublicKey: payload.user.nodePublicKey,
+      };
       saveUserData(authData);
       spinner.succeed('Connected');
       return true;
@@ -400,7 +404,9 @@ const addGuardian = async (email, name) => {
       const deeplinkResponse = await gridlock.generateGuardianDeeplink(params);
       if (!deeplinkResponse.success) {
         spinner.fail('Failed to generate guardian deeplink');
-        console.error(`Error: ${deeplinkResponse.error.message} (Code: ${deeplinkResponse.error.code})`);
+        console.error(
+          `Error: ${deeplinkResponse.error.message} (Code: ${deeplinkResponse.error.code})`
+        );
       } else {
         const deepLink = deeplinkResponse.data.deepLink;
         spinner.succeed('Successfully generated guardian activation link');
@@ -619,7 +625,6 @@ program
 
     createTransaction(email, coinType, transactionDetails);
   });
-
 
 // Print header before processing commands
 //printHeader();

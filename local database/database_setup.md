@@ -88,17 +88,16 @@ This guide will help you set up a MongoDB Docker container using Docker Compose.
 
 ### Point other applications to database
 
-
 1. Get IP address
 
-    ```sh
-    docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mongodb
-    ```
-   
+   ```sh
+   docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mongodb
+   ```
+
 2. Build connection string
 
-    ```sh
-       mongodb://root:example@<container_ip>:27017/gridlock
-    ```
+   ```sh
+      mongodb://root:example@<container_ip>:27017/gridlock
+   ```
 
 3. Use connection string in application. Use Gridlock SDK init function to update SDK parameters
