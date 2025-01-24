@@ -2,13 +2,13 @@ import { program } from 'commander';
 import inquirer from 'inquirer';
 import GridlockSdk from 'gridlock-sdk';
 
-import { API_KEY, BASE_URL, DEBUG_MODE } from './constants.js';
+import { API_KEY, BASE_URL, DEBUG_MODE } from './src/constants.js';
 import { SUPPORTED_COINS } from 'gridlock-sdk';
-import { showNetwork, showAvailableGuardians } from './network.managment.js';
-import { addGridlockGuardian, addCloudGuardian } from './guardian.management.js';
-import { login } from './login.management.js';
-import { createWallet, signTransaction } from './wallet.management.js';
-import { createUser } from './user.management.js';
+import { showNetwork, showAvailableGuardians } from './src/network.service.js';
+import { addGridlockGuardian, addCloudGuardian } from './src/guardian.service.js';
+import { login, encryptContents } from './src/auth.service.js';
+import { createWallet, signTransaction } from './src/wallet.service.js';
+import { createUser } from './src/user.service.js';
 
 export const gridlock = new GridlockSdk({
   apiKey: API_KEY,
@@ -19,15 +19,15 @@ export const gridlock = new GridlockSdk({
 
 let verbose = false;
 
-const addGuardianInquire = async (
+const addGuardianInquire = async ({
   email,
   password,
   guardianType,
   isOwnerGuardian,
   name,
   nodeId,
-  publicKey
-) => {
+  publicKey,
+}) => {
   console.log('Adding guardian...');
   if (!guardianType) {
     const answers = await inquirer.prompt([
@@ -67,7 +67,7 @@ const addGuardianInquire = async (
       publicKey = answers.publicKey;
       isOwnerGuardian = answers.isOwnerGuardian;
     }
-    await addCloudGuardian(email, password, name, nodeId, publicKey, isOwnerGuardian);
+    await addCloudGuardian({ email, password, name, nodeId, publicKey, isOwnerGuardian });
   } else {
     console.error('Invalid guardian type. Please specify "gridlock" or "cloud".');
   }
@@ -84,31 +84,41 @@ const showNetworkInquire = async () => {
   await showNetwork(answers.email);
 };
 
-const createUserInquire = async (name, email) => {
+const createUserInquire = async ({ name, email, password }) => {
   const answers = await inquirer.prompt([
     { type: 'input', name: 'name', message: 'User name:' },
     { type: 'input', name: 'email', message: 'User email:' },
+    { type: 'password', name: 'password', message: 'User password:' },
   ]);
-  await createUser(answers.name, answers.email);
+  await createUser({ name: answers.name, email: answers.email, password: answers.password });
 };
 
-const createWalletInquire = async (email, password, blockchain) => {
+const createWalletInquire = async ({ email, password, blockchain }) => {
   const answers = await inquirer.prompt([
     { type: 'input', name: 'email', message: 'User email:' },
     { type: 'password', name: 'password', message: 'Network access password:' },
     { type: 'list', name: 'blockchain', message: 'Select blockchain:', choices: SUPPORTED_COINS },
   ]);
-  await createWallet(answers.email, answers.password, answers.blockchain);
+  await createWallet({
+    email: answers.email,
+    password: answers.password,
+    blockchain: answers.blockchain,
+  });
 };
 
-const signTransactionInquire = async (email, password, blockchain, message) => {
+const signTransactionInquire = async ({ email, password, blockchain, message }) => {
   const answers = await inquirer.prompt([
     { type: 'input', name: 'email', message: 'User email:' },
     { type: 'password', name: 'password', message: 'Network access password:' },
     { type: 'list', name: 'blockchain', message: 'Select blockchain:', choices: SUPPORTED_COINS },
     { type: 'input', name: 'message', message: 'Message to be signed:' },
   ]);
-  await signTransaction(answers.email, answers.password, answers.blockchain, answers.message);
+  await signTransaction({
+    email: answers.email,
+    password: answers.password,
+    blockchain: answers.blockchain,
+    message: answers.message,
+  });
 };
 
 program.option('-v, --verbose', 'Enable verbose output').hook('preAction', async (thisCommand) => {
@@ -134,7 +144,7 @@ program
   .option('-e, --email <email>', 'User email')
   .action(async (options) => {
     if (options.email) {
-      await showNetwork(options.email);
+      await showNetwork({ email: options.email });
     } else {
       await showNetworkInquire();
     }
@@ -151,15 +161,15 @@ program
   .option('-k, --publicKey <publicKey>', 'Guardian public key')
   .option('-s, --seed <seed>', 'Seed (if owner guardian)')
   .action(async (options) => {
-    await registerGuardian(
-      options.type,
-      options.name,
-      options.nodeId,
-      options.publicKey,
-      options.owner,
-      options.password,
-      options.seed
-    );
+    await registerGuardian({
+      type: options.type,
+      name: options.name,
+      nodeId: options.nodeId,
+      publicKey: options.publicKey,
+      owner: options.owner,
+      password: options.password,
+      seed: options.seed,
+    });
   });
 
 program
@@ -167,11 +177,12 @@ program
   .description('Create a new user')
   .option('-n, --name <name>', 'User name')
   .option('-e, --email <email>', 'User email')
+  .option('-p, --password <password>', 'User password')
   .action(async (options) => {
-    if (options.name && options.email) {
-      await createUser(options.name, options.email);
+    if (options.name && options.email && options.password) {
+      await createUser({ name: options.name, email: options.email, password: options.password });
     } else {
-      await createUserInquire();
+      await createUserInquire({});
     }
   });
 
@@ -183,9 +194,13 @@ program
   .option('-b, --blockchain <blockchain>', 'Blockchain to create wallet for')
   .action(async (options) => {
     if (options.email && options.password && options.blockchain) {
-      await createWallet(options.email, options.password, options.blockchain);
+      await createWallet({
+        email: options.email,
+        password: options.password,
+        blockchain: options.blockchain,
+      });
     } else {
-      await createWalletInquire();
+      await createWalletInquire({});
     }
   });
 
@@ -198,9 +213,14 @@ program
   .option('-m, --message <message>', 'Message to be signed')
   .action(async (options) => {
     if (options.email && options.password && options.blockchain && options.message) {
-      await signTransaction(options.email, options.password, options.blockchain, options.message);
+      await signTransaction({
+        email: options.email,
+        password: options.password,
+        blockchain: options.blockchain,
+        message: options.message,
+      });
     } else {
-      await signTransactionInquire();
+      await signTransactionInquire({});
     }
   });
 
@@ -215,15 +235,15 @@ program
   .option('-i, --nodeId <nodeId>', 'Guardian node ID')
   .option('-k, --publicKey <publicKey>', 'Guardian public key')
   .action(async (options) => {
-    await addGuardianInquire(
-      options.email,
-      options.password,
-      options.type,
-      options.owner,
-      options.name,
-      options.nodeId,
-      options.publicKey
-    );
+    await addGuardianInquire({
+      email: options.email,
+      password: options.password,
+      guardianType: options.type,
+      isOwnerGuardian: options.owner,
+      name: options.name,
+      nodeId: options.nodeId,
+      publicKey: options.publicKey,
+    });
   });
 
 program
@@ -232,11 +252,24 @@ program
   .option('-e, --email <email>', 'User email')
   .option('-p, --password <password>', 'Network access password')
   .action(async (options) => {
-    const token = await login(options.email, options.password);
+    const token = await login({ email: options.email, password: options.password });
     if (token) {
       console.log('Login successful');
     } else {
       console.log('Login failed');
+    }
+  });
+
+program
+  .command('test')
+  .description('Test the encryptContents function')
+  .option('-c, --content <content>', 'Content to encrypt')
+  .action(async (options) => {
+    if (options.content) {
+      const encrypted = await encryptContents({ content: options.content });
+      console.log('Encrypted content:', encrypted);
+    } else {
+      console.log('Please provide content to encrypt using the --content option.');
     }
   });
 

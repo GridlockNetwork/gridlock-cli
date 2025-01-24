@@ -8,33 +8,33 @@ const USERS_DIR = path.join(os.homedir(), '.gridlock-cli', 'users');
 const TOKENS_DIR = path.join(os.homedir(), '.gridlock-cli', 'tokens');
 const KEYS_DIR = path.join(os.homedir(), '.gridlock-cli', 'keys');
 
-export function loadToken(email, type = 'access') {
-  const filePath = path.join(TOKENS_DIR, `${email}.tokens.json`);
+export function loadToken({ email, type = 'access' }) {
+  const filePath = path.join(TOKENS_DIR, `${email}.token.json`);
   if (!fs.existsSync(filePath)) {
     return null;
   }
-  const tokens = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  return tokens[type].token;
+  const token = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  return token[type].token;
 }
 
-export function saveTokens(tokens, email) {
+export function saveTokens({ authTokens, email }) {
   if (!fs.existsSync(TOKENS_DIR)) {
     fs.mkdirSync(TOKENS_DIR, { recursive: true });
   }
-  const filePath = path.join(TOKENS_DIR, `${email}.tokens.json`);
-  fs.writeFileSync(filePath, JSON.stringify(tokens, null, 2) + '\n');
+  const filePath = path.join(TOKENS_DIR, `${email}.token.json`);
+  fs.writeFileSync(filePath, JSON.stringify(authTokens, null, 2) + '\n');
 }
 
-export function saveKey(nodeId, keyObject, type) {
+export function saveKey({ identifier, key, type }) {
   if (!fs.existsSync(KEYS_DIR)) {
     fs.mkdirSync(KEYS_DIR, { recursive: true });
   }
-  const checksum = crypto.createHash('sha256').update(JSON.stringify(keyObject)).digest('hex');
-  const filePath = path.join(KEYS_DIR, `${nodeId}.${type}.key.json`);
-  fs.writeFileSync(filePath, JSON.stringify({ ...keyObject, checksum }, null, 2));
+  const checksum = crypto.createHash('sha256').update(JSON.stringify(key)).digest('hex');
+  const filePath = path.join(KEYS_DIR, `${identifier}.${type}.key.json`);
+  fs.writeFileSync(filePath, JSON.stringify({ ...key, checksum }, null, 2));
 }
 
-export function loadKey(nodeId, type) {
+export function loadKey({ nodeId, type }) {
   const filePath = path.join(KEYS_DIR, `${nodeId}.${type}.key.json`);
   if (!fs.existsSync(filePath)) {
     return null;
@@ -51,7 +51,7 @@ export function loadKey(nodeId, type) {
   return keyData;
 }
 
-export function saveGuardian(guardian) {
+export function saveGuardian({ guardian }) {
   if (!fs.existsSync(GUARDIANS_DIR)) {
     fs.mkdirSync(GUARDIANS_DIR, { recursive: true });
   }
@@ -69,7 +69,7 @@ export function loadGuardians() {
   });
 }
 
-export function saveUser(user) {
+export function saveUser({ user }) {
   if (!fs.existsSync(USERS_DIR)) {
     fs.mkdirSync(USERS_DIR, { recursive: true });
   }
@@ -77,7 +77,7 @@ export function saveUser(user) {
   fs.writeFileSync(filePath, JSON.stringify(user, null, 2) + '\n');
 }
 
-export function loadUser(email) {
+export function loadUser({ email }) {
   const filePath = path.join(USERS_DIR, `${email}.user.json`);
   if (!fs.existsSync(filePath)) {
     return null;

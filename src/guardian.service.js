@@ -1,8 +1,8 @@
 import ora from 'ora';
-import { loadGuardians, saveGuardian, saveUser } from './storage.managment.js';
-import { login } from './login.management.js';
-import { showAvailableGuardians } from './network.managment.js';
-import { gridlock } from './gridlock.js';
+import { loadGuardians, saveGuardian, saveUser } from './storage.service.js';
+import { login } from './auth.service.js';
+import { showAvailableGuardians } from './network.service.js';
+import { gridlock } from '../gridlock.js';
 
 export async function getGridlockGuardian() {
   const spinner = ora('Retrieving Gridlock guardians...').start();
@@ -34,12 +34,19 @@ export async function addGridlockGuardian() {
     return;
   }
 
-  saveGuardian(newGuardian);
+  saveGuardian({ guardian: newGuardian });
   spinner.succeed('Gridlock guardian retrieved and saved successfully');
   await showAvailableGuardians();
 }
 
-export async function addCloudGuardian(email, password, name, nodeId, publicKey, isOwnerGuardian) {
+export async function addCloudGuardian({
+  email,
+  password,
+  name,
+  nodeId,
+  publicKey,
+  isOwnerGuardian,
+}) {
   const spinner = ora('Adding guardian...').start();
 
   const guardian = {
@@ -50,17 +57,17 @@ export async function addCloudGuardian(email, password, name, nodeId, publicKey,
     active: true,
   };
 
-  saveGuardian(guardian);
+  saveGuardian({ guardian });
 
-  const token = await login(email, password);
-  if (!token) {
+  const authTokens = await login({ email, password });
+  if (!authTokens) {
     spinner.fail('Login failed.');
     return;
   }
 
   const response = await gridlock.addGuardian(guardian, !!isOwnerGuardian);
   if (response.success) {
-    saveUser(response.data);
+    saveUser({ user: response.data });
     spinner.succeed('Guardian assigned successfully');
   } else {
     spinner.fail('Failed to assign guardian.');

@@ -1,6 +1,6 @@
 import ora from 'ora';
 import chalk from 'chalk';
-import { loadUser, loadGuardians } from './storage.managment.js';
+import { loadUser, loadGuardians } from './storage.service.js';
 
 const guardianTypeMap = {
   'Owner Guardian': 'ownerGuardian',
@@ -11,7 +11,7 @@ const guardianTypeMap = {
   'Partner Guardian': 'partnerGuardian',
 };
 
-export function showNetwork(email) {
+export function showNetwork({ email }) {
   const spinner = ora('Retrieving user guardians...').start();
   const user = loadUser(email);
 
@@ -25,7 +25,9 @@ export function showNetwork(email) {
   spinner.succeed('User guardians retrieved successfully');
   console.log(
     chalk.bold(
-      `\n🌐 Guardians for ${chalk.hex('#4A90E2').bold(user.name)} (${chalk.hex('#4A90E2').bold(email)})`
+      `\n🌐 Guardians for ${chalk.hex('#4A90E2').bold(user.name)} (${chalk
+        .hex('#4A90E2')
+        .bold(email)})`
     )
   );
   console.log('-----------------------------------');
@@ -49,7 +51,9 @@ export function showNetwork(email) {
       const crown = isOwnerGuardian ? '👑' : '';
       console.log(`       ${chalk.bold('Name:')} ${guardian.name} ${crown}`);
       console.log(
-        `       ${chalk.bold('Type:')} ${emoji} ${Object.keys(guardianTypeMap).find((key) => guardianTypeMap[key] === guardian.type)}`
+        `       ${chalk.bold('Type:')} ${emoji} ${Object.keys(guardianTypeMap).find(
+          (key) => guardianTypeMap[key] === guardian.type
+        )}`
       );
       console.log(`       ${chalk.bold('Node ID:')} ${guardian.nodeId}`);
       console.log(`       ${chalk.bold('Public Key:')} ${guardian.publicKey}`);
@@ -95,7 +99,9 @@ export function showAvailableGuardians() {
     guardians.forEach((guardian, index) => {
       console.log(`       ${chalk.bold('Name:')} ${guardian.name}`);
       console.log(
-        `       ${chalk.bold('Type:')} ${Object.keys(guardianTypeMap).find((key) => guardianTypeMap[key] === guardian.type)}`
+        `       ${chalk.bold('Type:')} ${Object.keys(guardianTypeMap).find(
+          (key) => guardianTypeMap[key] === guardian.type
+        )}`
       );
       console.log(`       ${chalk.bold('Node ID:')} ${guardian.nodeId}`);
       console.log(`       ${chalk.bold('Public Key:')} ${guardian.publicKey}`);
