@@ -2,22 +2,33 @@ import fs from 'fs';
 import crypto from 'crypto';
 import path from 'path';
 import os from 'os';
+import type { IUser } from 'gridlock-sdk/dist/types/user.type.d.ts';
+import type { IGuardian } from 'gridlock-sdk/dist/types/guardian.type.d.ts';
+import type { ILoginResponse } from 'gridlock-sdk/dist/types/auth.type.d.ts';
 
 const GUARDIANS_DIR = path.join(os.homedir(), '.gridlock-cli', 'guardians');
 const USERS_DIR = path.join(os.homedir(), '.gridlock-cli', 'users');
 const TOKENS_DIR = path.join(os.homedir(), '.gridlock-cli', 'tokens');
 const KEYS_DIR = path.join(os.homedir(), '.gridlock-cli', 'keys');
 
-export function loadToken({ email, type = 'access' }) {
+/**
+ * Loads the token for the specified email and token type.
+ *
+ * @param {Object} params - The parameters for loading the token.
+ * @param {string} params.email - The email associated with the token.
+ * @param {string} params.type - The type of token to load.
+ * @returns {string | null} The token string for the requested type of token, or null if not found.
+ */
+export function loadToken({ email, type }: { email: string; type: string }) {
   const filePath = path.join(TOKENS_DIR, `${email}.token.json`);
   if (!fs.existsSync(filePath)) {
     return null;
   }
-  const token = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  return token[type].token;
+  const { authTokens } = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  return authTokens[type]?.token || null;
 }
 
-export function saveTokens({ authTokens, email }) {
+export function saveTokens({ authTokens, email }: { authTokens: ILoginResponse; email: string }) {
   if (!fs.existsSync(TOKENS_DIR)) {
     fs.mkdirSync(TOKENS_DIR, { recursive: true });
   }
@@ -25,7 +36,7 @@ export function saveTokens({ authTokens, email }) {
   fs.writeFileSync(filePath, JSON.stringify(authTokens, null, 2) + '\n');
 }
 
-export function saveKey({ identifier, key, type }) {
+export function saveKey({ identifier, key, type }: { identifier: string; key: any; type: string }) {
   if (!fs.existsSync(KEYS_DIR)) {
     fs.mkdirSync(KEYS_DIR, { recursive: true });
   }
@@ -34,7 +45,7 @@ export function saveKey({ identifier, key, type }) {
   fs.writeFileSync(filePath, JSON.stringify({ ...key, checksum }, null, 2));
 }
 
-export function loadKey({ nodeId, type }) {
+export function loadKey({ nodeId, type }: { nodeId: string; type: string }) {
   const filePath = path.join(KEYS_DIR, `${nodeId}.${type}.key.json`);
   if (!fs.existsSync(filePath)) {
     return null;
@@ -51,7 +62,7 @@ export function loadKey({ nodeId, type }) {
   return keyData;
 }
 
-export function saveGuardian({ guardian }) {
+export function saveGuardian({ guardian }: { guardian: IGuardian }) {
   if (!fs.existsSync(GUARDIANS_DIR)) {
     fs.mkdirSync(GUARDIANS_DIR, { recursive: true });
   }
@@ -59,7 +70,7 @@ export function saveGuardian({ guardian }) {
   fs.writeFileSync(filePath, JSON.stringify(guardian, null, 2));
 }
 
-export function loadGuardians() {
+export function loadGuardians(): IGuardian[] {
   if (!fs.existsSync(GUARDIANS_DIR)) {
     return [];
   }
@@ -69,7 +80,7 @@ export function loadGuardians() {
   });
 }
 
-export function saveUser({ user }) {
+export function saveUser({ user }: { user: IUser }) {
   if (!fs.existsSync(USERS_DIR)) {
     fs.mkdirSync(USERS_DIR, { recursive: true });
   }
@@ -77,7 +88,7 @@ export function saveUser({ user }) {
   fs.writeFileSync(filePath, JSON.stringify(user, null, 2) + '\n');
 }
 
-export function loadUser({ email }) {
+export function loadUser({ email }: { email: string }): IUser | null {
   const filePath = path.join(USERS_DIR, `${email}.user.json`);
   if (!fs.existsSync(filePath)) {
     return null;

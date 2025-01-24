@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "es2022",                                  /* Emit modern JavaScript. */
+    "module": "ESNext",                                  /* Use ES module syntax. */
+    "rootDir": "./src",                                  /* Specify the root folder for TypeScript files. */
+    "outDir": "./dist",                                  /* Output compiled files to 'dist'. */
+    "moduleResolution": "node",                          /* Use Node.js-style module resolution. */
+    "esModuleInterop": true,                             /* Enable compatibility for CommonJS imports. */
+    "declaration": true,
+    "sourceMap": true,
+    "strict": true,                                      /* Enable all strict type-checking options. */
+    "skipLibCheck": true,                                /* Skip type-checking declaration files. */
+    "forceConsistentCasingInFileNames": true             /* Ensure import paths match file casing. */
+  },
+  "include": ["src/**/*", "src/gridlock.ts"],                /* Include source files and specific entry points. */
+  "exclude": ["node_modules", "dist"]                   /* Exclude unnecessary directories. */
+}

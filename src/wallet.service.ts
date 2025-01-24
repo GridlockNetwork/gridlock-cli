@@ -1,10 +1,23 @@
 import ora from 'ora';
 import { loadUser } from './storage.service.js';
 import { login } from './auth.service.js';
-import { API_KEY, BASE_URL, DEBUG_MODE } from './constants.js';
-import { gridlock } from '../gridlock.js';
+import { API_KEY, BASE_URL, DEBUG_MODE } from './constants';
+import { gridlock } from './gridlock.js';
 
-export async function createWallet({ email, password, blockchain }) {
+interface CreateWalletParams {
+  email: string;
+  password: string;
+  blockchain: string;
+}
+
+interface SignTransactionParams {
+  email: string;
+  password: string;
+  blockchain: string;
+  message: string;
+}
+
+export async function createWallet({ email, password, blockchain }: CreateWalletParams) {
   const user = loadUser({ email });
   if (!user) {
     console.error('User not found');
@@ -17,7 +30,7 @@ export async function createWallet({ email, password, blockchain }) {
   }
 
   const spinner = ora('Creating wallet...').start();
-  const response = await gridlock.createWallets([blockchain], user);
+  const response = await gridlock.createWallet(blockchain, user);
   if (!response.success) {
     spinner.fail(
       `Failed to create wallet\nError: ${response.error.message} (Code: ${response.error.code})${
@@ -36,8 +49,13 @@ export async function createWallet({ email, password, blockchain }) {
   );
 }
 
-export async function signTransaction({ email, password, blockchain, message }) {
-  const user = loadUser(email);
+export async function signTransaction({
+  email,
+  password,
+  blockchain,
+  message,
+}: SignTransactionParams) {
+  const user = loadUser({ email });
   if (!user) {
     console.error('User not found');
     return;

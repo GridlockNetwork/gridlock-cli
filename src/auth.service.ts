@@ -1,13 +1,21 @@
 import ora from 'ora';
 import { loadToken, saveTokens, loadUser, loadKey } from './storage.service.js';
 import { decryptKey } from './key.service.js';
-import { gridlock } from '../gridlock.js';
+import { gridlock } from './gridlock.js';
 import { API_KEY, BASE_URL, DEBUG_MODE } from './constants.js';
+import type { ILoginResponse } from 'gridlock-sdk/dist/types/auth.type.d.ts';
 
-export async function login({ email, password }) {
+interface UserCredentials {
+  email: string;
+  password: string;
+}
+
+export async function login({ email, password }: UserCredentials) {
+  console.log('Logging in...'); //debug
   let authTokens = await loginWithToken({ email });
   if (!authTokens) {
-    authTokens = await loginWithKey({ email, password });
+    const loginResponse = await loginWithKey({ email, password });
+    authTokens = loginResponse ? loginResponse : null;
   }
   if (authTokens) {
     saveTokens({ authTokens, email });
@@ -15,14 +23,14 @@ export async function login({ email, password }) {
   return authTokens;
 }
 
-async function loginWithToken({ email }) {
-  const refreshToken = loadToken({ email, type: 'refresh' });
-  if (refreshToken) {
+async function loginWithToken({ email }: { email: string }): Promise<ILoginResponse | null> {
+  const accessToken = loadToken({ email, type: 'refresh' });
+  if (accessToken) {
     const spinner = ora('Attempting to log in with token...').start();
-    const loginResponse = await gridlock.loginWithToken(refreshToken);
+    const loginResponse = await gridlock.loginWithToken(accessToken);
     if (loginResponse.success) {
       spinner.succeed('Logged in with token successfully');
-      return loginResponse.data.authTokens;
+      return { authTokens: loginResponse.data.authTokens };
     } else {
       spinner.fail(`Failed to log in with token`);
       console.error(`Error: ${loginResponse.error.message} (Code: ${loginResponse.error.code})`);
@@ -31,7 +39,7 @@ async function loginWithToken({ email }) {
   return null;
 }
 
-async function loginWithKey({ email, password }) {
+async function loginWithKey({ email, password }: UserCredentials): Promise<ILoginResponse | null> {
   const spinner = ora('Attempting to log in with challenge-response...').start();
   const user = loadUser({ email });
   if (!user) {
@@ -53,7 +61,7 @@ async function loginWithKey({ email, password }) {
 
   if (loginResponse.success) {
     spinner.succeed('Logged in with challenge-response successfully');
-    return loginResponse.data;
+    return { authTokens: loginResponse.data.authTokens };
   } else {
     spinner.fail('Failed to log in with challenge-response');
     console.error(`Error: ${loginResponse.error.message} (Code: ${loginResponse.error.code})`);
@@ -61,9 +69,9 @@ async function loginWithKey({ email, password }) {
   }
 }
 
-export function encryptContents(contents) {
-  return 'd';
-}
+// export function encryptContents(contents) {
+//   return contents;
+// }
 // if (1 === 1) {
 
 //     const msg = "hello";

@@ -2,11 +2,12 @@ import ora from 'ora';
 import { loadGuardians, saveGuardian, saveUser } from './storage.service.js';
 import { login } from './auth.service.js';
 import { showAvailableGuardians } from './network.service.js';
-import { gridlock } from '../gridlock.js';
+import { gridlock } from './gridlock.js';
+import type { IGuardian } from 'gridlock-sdk/dist/types/guardian.type.d.ts';
 
-export async function getGridlockGuardian() {
+export async function getGridlockGuardians() {
   const spinner = ora('Retrieving Gridlock guardians...').start();
-  const response = await gridlock.getGridlockGuardian();
+  const response = await gridlock.getGridlockGuardians();
   if (!response.success) {
     spinner.fail('Failed to retrieve Gridlock guardians');
     console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
@@ -19,7 +20,7 @@ export async function getGridlockGuardian() {
 
 export async function addGridlockGuardian() {
   const spinner = ora('Retrieving Gridlock guardian...').start();
-  const gridlockGuardians = await getGridlockGuardian();
+  const gridlockGuardians = await getGridlockGuardians();
   if (!gridlockGuardians) {
     spinner.fail('Failed to retrieve Gridlock guardians');
     return;
@@ -28,7 +29,9 @@ export async function addGridlockGuardian() {
   const existingGuardians = loadGuardians();
   const existingGuardianIds = existingGuardians.map((g) => g.nodeId);
 
-  const newGuardian = gridlockGuardians.find((g) => !existingGuardianIds.includes(g.nodeId));
+  const newGuardian = Array.isArray(gridlockGuardians)
+    ? gridlockGuardians.find((g) => !existingGuardianIds.includes(g.nodeId))
+    : null;
   if (!newGuardian) {
     spinner.fail('No new Gridlock guardian available to add');
     return;
@@ -42,20 +45,15 @@ export async function addGridlockGuardian() {
 export async function addCloudGuardian({
   email,
   password,
-  name,
-  nodeId,
-  publicKey,
+  guardian,
   isOwnerGuardian,
+}: {
+  email: string;
+  password: string;
+  guardian: IGuardian;
+  isOwnerGuardian: boolean;
 }) {
   const spinner = ora('Adding guardian...').start();
-
-  const guardian = {
-    name,
-    type: 'cloudGuardian',
-    nodeId,
-    publicKey,
-    active: true,
-  };
 
   saveGuardian({ guardian });
 
@@ -65,7 +63,7 @@ export async function addCloudGuardian({
     return;
   }
 
-  const response = await gridlock.addGuardian(guardian, !!isOwnerGuardian);
+  const response = await gridlock.addGuardian(guardian, isOwnerGuardian);
   if (response.success) {
     saveUser({ user: response.data });
     spinner.succeed('Guardian assigned successfully');

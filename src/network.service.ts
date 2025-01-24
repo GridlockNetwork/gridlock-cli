@@ -1,6 +1,8 @@
 import ora from 'ora';
 import chalk from 'chalk';
 import { loadUser, loadGuardians } from './storage.service.js';
+import type { IUser } from 'gridlock-sdk/dist/types/user.type.d.ts';
+import type { IGuardian } from 'gridlock-sdk/dist/types/guardian.type.d.ts';
 
 const guardianTypeMap = {
   'Owner Guardian': 'ownerGuardian',
@@ -11,16 +13,16 @@ const guardianTypeMap = {
   'Partner Guardian': 'partnerGuardian',
 };
 
-export function showNetwork({ email }) {
+export function showNetwork({ email }: { email: string }) {
   const spinner = ora('Retrieving user guardians...').start();
-  const user = loadUser(email);
+  const user: IUser | null = loadUser({ email });
 
   if (!user) {
     spinner.fail('User not found');
     return;
   }
 
-  const guardians = user.nodePool || [];
+  const guardians: IGuardian[] = user.nodePool || [];
 
   spinner.succeed('User guardians retrieved successfully');
   console.log(
@@ -35,7 +37,7 @@ export function showNetwork({ email }) {
   if (guardians.length === 0) {
     console.log('No guardians found.');
   } else {
-    const emojiMap = {
+    const emojiMap: { [key: string]: string } = {
       localGuardian: '🏡',
       socialGuardian: '👥',
       cloudGuardian: '🌥️ ',
@@ -51,9 +53,9 @@ export function showNetwork({ email }) {
       const crown = isOwnerGuardian ? '👑' : '';
       console.log(`       ${chalk.bold('Name:')} ${guardian.name} ${crown}`);
       console.log(
-        `       ${chalk.bold('Type:')} ${emoji} ${Object.keys(guardianTypeMap).find(
-          (key) => guardianTypeMap[key] === guardian.type
-        )}`
+        `       ${chalk.bold('Type:')} ${emoji} ${(
+          Object.keys(guardianTypeMap) as Array<keyof typeof guardianTypeMap>
+        ).find((key) => guardianTypeMap[key] === guardian.type)}`
       );
       console.log(`       ${chalk.bold('Node ID:')} ${guardian.nodeId}`);
       console.log(`       ${chalk.bold('Public Key:')} ${guardian.publicKey}`);
@@ -76,17 +78,20 @@ export function showNetwork({ email }) {
 
 export function showAvailableGuardians() {
   const spinner = ora('Retrieving network status...').start();
-  const guardians = loadGuardians();
+  const guardians: IGuardian[] = loadGuardians();
 
   spinner.succeed('Network status retrieved successfully');
   console.log(chalk.bold('\n🌐 Guardians in the Network:'));
   console.log('-----------------------------------');
 
-  const guardianGroups = guardians.reduce((acc, guardian) => {
-    acc[guardian.type] = acc[guardian.type] || [];
-    acc[guardian.type].push(guardian);
-    return acc;
-  }, {});
+  const guardianGroups = guardians.reduce(
+    (acc: { [key: string]: IGuardian[] }, guardian: IGuardian) => {
+      acc[guardian.type] = acc[guardian.type] || [];
+      acc[guardian.type].push(guardian);
+      return acc;
+    },
+    {}
+  );
 
   const localGuardians = guardianGroups['localGuardian'] || [];
   const socialGuardians = guardianGroups['socialGuardian'] || [];
@@ -94,14 +99,15 @@ export function showAvailableGuardians() {
   const gridlockGuardians = guardianGroups['gridlockGuardian'] || [];
   const partnerGuardians = guardianGroups['partnerGuardian'] || [];
 
-  const printGuardians = (title, guardians) => {
+  const printGuardians = (title: string, guardians: IGuardian[]) => {
     console.log(chalk.bold(`\n${title}:`));
     guardians.forEach((guardian, index) => {
       console.log(`       ${chalk.bold('Name:')} ${guardian.name}`);
       console.log(
-        `       ${chalk.bold('Type:')} ${Object.keys(guardianTypeMap).find(
-          (key) => guardianTypeMap[key] === guardian.type
-        )}`
+        `       ${chalk.bold('Type:')} ${(
+          Object.keys(guardianTypeMap) as Array<keyof typeof guardianTypeMap>
+        ).find((key) => guardianTypeMap[key] === guardian.type)}
+        `
       );
       console.log(`       ${chalk.bold('Node ID:')} ${guardian.nodeId}`);
       console.log(`       ${chalk.bold('Public Key:')} ${guardian.publicKey}`);

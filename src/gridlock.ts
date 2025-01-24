@@ -2,13 +2,14 @@ import { program } from 'commander';
 import inquirer from 'inquirer';
 import GridlockSdk from 'gridlock-sdk';
 
-import { API_KEY, BASE_URL, DEBUG_MODE } from './src/constants.js';
+import { API_KEY, BASE_URL, DEBUG_MODE } from './constants.js';
 import { SUPPORTED_COINS } from 'gridlock-sdk';
-import { showNetwork, showAvailableGuardians } from './src/network.service.js';
-import { addGridlockGuardian, addCloudGuardian } from './src/guardian.service.js';
-import { login, encryptContents } from './src/auth.service.js';
-import { createWallet, signTransaction } from './src/wallet.service.js';
-import { createUser } from './src/user.service.js';
+import { showNetwork, showAvailableGuardians } from './network.service.js';
+import { addGridlockGuardian, addCloudGuardian } from './guardian.service.js';
+import { login } from './auth.service.js';
+import { createWallet, signTransaction } from './wallet.service.js';
+import { createUser } from './user.service.js';
+import type { IGuardian } from 'gridlock-sdk/dist/types/guardian.type.d.ts';
 
 export const gridlock = new GridlockSdk({
   apiKey: API_KEY,
@@ -19,15 +20,18 @@ export const gridlock = new GridlockSdk({
 
 let verbose = false;
 
-const addGuardianInquire = async ({
-  email,
-  password,
-  guardianType,
-  isOwnerGuardian,
-  name,
-  nodeId,
-  publicKey,
-}) => {
+interface AddGuardianOptions {
+  email?: string;
+  password?: string;
+  guardianType?: string;
+  isOwnerGuardian?: boolean;
+  name?: string;
+  nodeId?: string;
+  publicKey?: string;
+}
+
+const addGuardianInquire = async (options: AddGuardianOptions) => {
+  let { email, password, guardianType, isOwnerGuardian, name, nodeId, publicKey } = options;
   console.log('Adding guardian...');
   if (!guardianType) {
     const answers = await inquirer.prompt([
@@ -67,7 +71,10 @@ const addGuardianInquire = async ({
       publicKey = answers.publicKey;
       isOwnerGuardian = answers.isOwnerGuardian;
     }
-    await addCloudGuardian({ email, password, name, nodeId, publicKey, isOwnerGuardian });
+    // @ts-ignore - the use of inquirer ensures that variables cannot be null
+    const guardian: IGuardian = { name, nodeId, publicKey, type: 'cloudGuardian', active: true };
+    // @ts-ignore - the use of inquirer ensures that variables cannot be null
+    await addCloudGuardian({ email, password, guardian, isOwnerGuardian });
   } else {
     console.error('Invalid guardian type. Please specify "gridlock" or "cloud".');
   }
@@ -81,10 +88,10 @@ const showNetworkInquire = async () => {
       message: 'Please enter the user email:',
     },
   ]);
-  await showNetwork(answers.email);
+  await showNetwork({ email: answers.email });
 };
 
-const createUserInquire = async ({ name, email, password }) => {
+const createUserInquire = async () => {
   const answers = await inquirer.prompt([
     { type: 'input', name: 'name', message: 'User name:' },
     { type: 'input', name: 'email', message: 'User email:' },
@@ -93,7 +100,7 @@ const createUserInquire = async ({ name, email, password }) => {
   await createUser({ name: answers.name, email: answers.email, password: answers.password });
 };
 
-const createWalletInquire = async ({ email, password, blockchain }) => {
+const createWalletInquire = async () => {
   const answers = await inquirer.prompt([
     { type: 'input', name: 'email', message: 'User email:' },
     { type: 'password', name: 'password', message: 'Network access password:' },
@@ -106,7 +113,7 @@ const createWalletInquire = async ({ email, password, blockchain }) => {
   });
 };
 
-const signTransactionInquire = async ({ email, password, blockchain, message }) => {
+const signTransactionInquire = async () => {
   const answers = await inquirer.prompt([
     { type: 'input', name: 'email', message: 'User email:' },
     { type: 'password', name: 'password', message: 'Network access password:' },
@@ -123,7 +130,7 @@ const signTransactionInquire = async ({ email, password, blockchain, message }) 
 
 program.option('-v, --verbose', 'Enable verbose output').hook('preAction', async (thisCommand) => {
   verbose = thisCommand.opts().verbose;
-  gridlock.verbose = verbose;
+  gridlock.setVerbose(verbose);
 });
 program.hook('preAction', () => {
   console.log('\n\n');
@@ -161,14 +168,14 @@ program
   .option('-k, --publicKey <publicKey>', 'Guardian public key')
   .option('-s, --seed <seed>', 'Seed (if owner guardian)')
   .action(async (options) => {
-    await registerGuardian({
-      type: options.type,
+    await addGuardianInquire({
+      email: options.email,
+      password: options.password,
+      guardianType: options.type,
+      isOwnerGuardian: options.owner,
       name: options.name,
       nodeId: options.nodeId,
       publicKey: options.publicKey,
-      owner: options.owner,
-      password: options.password,
-      seed: options.seed,
     });
   });
 
@@ -182,7 +189,7 @@ program
     if (options.name && options.email && options.password) {
       await createUser({ name: options.name, email: options.email, password: options.password });
     } else {
-      await createUserInquire({});
+      await createUserInquire();
     }
   });
 
@@ -200,7 +207,7 @@ program
         blockchain: options.blockchain,
       });
     } else {
-      await createWalletInquire({});
+      await createWalletInquire();
     }
   });
 
@@ -220,7 +227,7 @@ program
         message: options.message,
       });
     } else {
-      await signTransactionInquire({});
+      await signTransactionInquire();
     }
   });
 
@@ -260,19 +267,19 @@ program
     }
   });
 
-program
-  .command('test')
-  .description('Test the encryptContents function')
-  .option('-c, --content <content>', 'Content to encrypt')
-  .action(async (options) => {
-    if (options.content) {
-      const encrypted = await encryptContents({ content: options.content });
-      console.log('Encrypted content:', encrypted);
-    } else {
-      console.log('Please provide content to encrypt using the --content option.');
-    }
-  });
+// program
+//   .command('test')
+//   .description('Test the encryptContents function')
+//   .option('-c, --content <content>', 'Content to encrypt')
+//   .action(async (options) => {
+//     if (options.content) {
+//       const encrypted = await encryptContents({ content: options.content });
+//       console.log('Encrypted content:', encrypted);
+//     } else {
+//       console.log('Please provide content to encrypt using the --content option.');
+//     }
+//   });
 
 // ---------------- RUN PROGRAM ----------------
 
-await program.parseAsync(process.argv);
+program.parseAsync(process.argv);

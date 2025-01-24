@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import nacl from 'tweetnacl';
 
-async function deriveKey(password, salt) {
+async function deriveKey(password: string, salt: Buffer): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     crypto.scrypt(password, salt, 32, { N: 16384, r: 8, p: 1 }, (err, derivedKey) => {
       if (err) reject(err);
@@ -10,7 +10,7 @@ async function deriveKey(password, salt) {
   });
 }
 
-export async function encryptKey({ key, password }) {
+export async function encryptKey({ key, password }: { key: string; password: string }) {
   const salt = crypto.randomBytes(16);
   const derivedKey = await deriveKey(password, salt);
   const iv = crypto.randomBytes(12);
@@ -28,7 +28,13 @@ export async function encryptKey({ key, password }) {
   };
 }
 
-export async function decryptKey({ encryptedKeyObject, password }) {
+export async function decryptKey({
+  encryptedKeyObject,
+  password,
+}: {
+  encryptedKeyObject: any;
+  password: string;
+}) {
   try {
     const { key, iv, authTag, salt } = encryptedKeyObject;
     const derivedKey = await deriveKey(password, Buffer.from(salt, 'base64'));
@@ -38,16 +44,20 @@ export async function decryptKey({ encryptedKeyObject, password }) {
     decryptedKey += decipher.final('utf8');
     return decryptedKey;
   } catch (error) {
-    console.error('Failed to decrypt key:', error.message);
+    if (error instanceof Error) {
+      console.error('Failed to decrypt key:', error.message);
+    } else {
+      console.error('Failed to decrypt key:', error);
+    }
     throw new Error('Decryption failed. Please check your password and try again.');
   }
 }
 
-export async function generateSigningKey() {
-  const signingKey = crypto.randomBytes(32);
+export async function generateSigningKey(): Promise<Buffer> {
+  return crypto.randomBytes(32);
 }
 
-export function generateIdentityKey() {
+export function generateIdentityKey(): { privateKey: string; publicKey: string } {
   const keyPair = nacl.box.keyPair();
   const privateKey = Buffer.from(keyPair.secretKey);
   const publicKey = Buffer.from(keyPair.publicKey);
@@ -60,14 +70,8 @@ export function generateIdentityKey() {
  * @param {string} nodeId - The unique node ID.
  * @returns {string} - A unique per-node derived key.
  */
-export function nodeSigningKey(signingKey, nodeId) {
+export function nodeSigningKey(signingKey: Buffer, nodeId: string): string {
   return crypto
-    .hkdfSync(
-      'sha256', // Hash function
-      signingKey, // Input key material
-      Buffer.from(nodeId), // Salt (adds uniqueness)
-      Buffer.from('node-auth'), // Info (context-specific label)
-      32 // Output length (256-bit key)
-    )
-    .toString('hex');
+    .hkdfSync('sha256', signingKey, Buffer.from(nodeId), Buffer.from('node-auth'), 32)
+    .toString();
 }
