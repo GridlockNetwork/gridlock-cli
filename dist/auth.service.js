@@ -8,9 +8,8 @@ import base32 from 'hi-base32';
 export async function login({ email, password }) {
     let authTokens = await loginWithToken({ email });
     if (!authTokens) {
-        //this doesn't work
-        //const loginResponse = await loginWithKey({ email, password });
-        //authTokens = loginResponse ? loginResponse : null;
+        const loginResponse = await loginWithKey({ email, password });
+        authTokens = loginResponse ? loginResponse : null;
     }
     if (authTokens) {
         saveTokens({ authTokens, email });

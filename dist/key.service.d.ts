@@ -1,3 +1,5 @@
+import type { PasswordBundle } from 'gridlock-sdk/dist/types/wallet.type.d.ts';
+import type { IUser } from 'gridlock-sdk/dist/types/user.type.d.ts';
 export declare function encryptKey({ key, password }: {
     key: string;
     password: string;
@@ -13,10 +15,10 @@ export declare function decryptKey({ encryptedKeyObject, password, }: {
     encryptedKeyObject: any;
     password: string;
 }): Promise<string>;
-export declare function generateSigningKey(): Promise<Buffer>;
+export declare function generateSigningKey(): Promise<string>;
 export declare function generateIdentityKey(): {
-    privateKey: string;
     publicKey: string;
+    seed: string;
 };
 /**
  * Derives a stronger, unique node-specific key using HKDF.
@@ -24,4 +26,14 @@ export declare function generateIdentityKey(): {
  * @param {string} nodeId - The unique node ID.
  * @returns {string} - A unique per-node derived key.
  */
-export declare function nodeSigningKey(signingKey: Buffer, nodeId: string): string;
+export declare function getNodeSigningKey(signingKey: Buffer, nodeId: string): string;
+export declare function encryptContents({ content, publicKey, identifier, password, }: {
+    content: string;
+    publicKey: string;
+    identifier: string;
+    password: string;
+}): Promise<string>;
+export declare function generatePasswordBundle({ user, password, }: {
+    user: IUser;
+    password: string;
+}): Promise<PasswordBundle>;

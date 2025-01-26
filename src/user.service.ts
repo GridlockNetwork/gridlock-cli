@@ -4,7 +4,7 @@ import { API_KEY, BASE_URL, DEBUG_MODE } from './constants';
 import chalk from 'chalk';
 
 import { gridlock } from './gridlock.js';
-import { generateIdentityKey, encryptKey, decryptKey } from './key.service.js';
+import { generateIdentityKey, encryptKey, generateSigningKey } from './key.service.js';
 import type { IRegisterData } from 'gridlock-sdk/dist/types/user.type.d.ts';
 
 /**
@@ -46,16 +46,25 @@ export async function createUser({
   }
 
   const { user, authTokens } = response.data;
-  const { publicKey, privateKey } = generateIdentityKey();
-
-  const encryptedPublicKey = await encryptKey({ key: publicKey, password });
-  const encryptedPrivateKey = await encryptKey({ key: privateKey, password });
-
-  saveKey({ identifier: email, key: encryptedPublicKey, type: 'public' });
-  saveKey({ identifier: email, key: encryptedPrivateKey, type: 'private' });
-
   saveTokens({ authTokens, email });
   saveUser({ user });
 
+  await createUserKeys(email, password);
+
   spinner.succeed(`➕ Created account for user: ${chalk.hex('#4A90E2').bold(user.name)}`);
+}
+
+async function createUserKeys(email: string, password: string) {
+  const { publicKey, seed } = generateIdentityKey();
+  console.log('seed:', seed); //debug
+  const encryptedPublicKey = await encryptKey({ key: publicKey, password });
+  const encryptedSeed = await encryptKey({ key: seed, password });
+
+  saveKey({ identifier: email, key: encryptedPublicKey, type: 'public' });
+  saveKey({ identifier: email, key: encryptedSeed, type: 'seed' });
+
+  const signingKey = await generateSigningKey();
+  const encryptedSigningKey = await encryptKey({ key: signingKey, password });
+
+  saveKey({ identifier: email, key: encryptedSigningKey, type: 'signing' });
 }
