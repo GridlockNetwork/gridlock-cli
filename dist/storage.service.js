@@ -19,10 +19,10 @@ export function loadToken({ email, type }) {
     if (!fs.existsSync(filePath)) {
         return null;
     }
-    const { authTokens } = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    const authTokens = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     return authTokens[type]?.token || null;
 }
-export function saveTokens({ authTokens, email }) {
+export function saveTokens({ authTokens, email, }) {
     if (!fs.existsSync(TOKENS_DIR)) {
         fs.mkdirSync(TOKENS_DIR, { recursive: true });
     }
@@ -37,8 +37,23 @@ export function saveKey({ identifier, key, type }) {
     const filePath = path.join(KEYS_DIR, `${identifier}.${type}.key.json`);
     fs.writeFileSync(filePath, JSON.stringify({ ...key, checksum }, null, 2));
 }
-export function loadKey({ nodeId, type }) {
-    const filePath = path.join(KEYS_DIR, `${nodeId}.${type}.key.json`);
+/**
+ * Loads a key of a specified type defined by the identifier.
+ *
+ * @param {Object} params - The parameters for loading the key.
+ * @param {string} params.identifier - The identifier for the entity associated with the key.
+ * @param {string} params.type - The type of the key (e.g., private, public, signing).
+ *
+ * @returns {Object|null} The key data if the key file exists and passes the integrity check, otherwise null.
+ *
+ * @throws {Error} If the key file integrity check fails.
+ *
+ * @remarks
+ * - `private` and `public` types are used for node identity to facilitate encrypted E2E communication.
+ * - `signing` type is used to sign transactions.
+ */
+export function loadKey({ identifier, type }) {
+    const filePath = path.join(KEYS_DIR, `${identifier}.${type}.key.json`);
     if (!fs.existsSync(filePath)) {
         return null;
     }
@@ -68,6 +83,13 @@ export function loadGuardians() {
         const filePath = path.join(GUARDIANS_DIR, file);
         return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     });
+}
+export function loadGuardian({ nodeId }) {
+    const filePath = path.join(GUARDIANS_DIR, `${nodeId}.guardian.json`);
+    if (!fs.existsSync(filePath)) {
+        return null;
+    }
+    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 }
 export function saveUser({ user }) {
     if (!fs.existsSync(USERS_DIR)) {

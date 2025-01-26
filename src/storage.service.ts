@@ -4,7 +4,7 @@ import path from 'path';
 import os from 'os';
 import type { IUser } from 'gridlock-sdk/dist/types/user.type.d.ts';
 import type { IGuardian } from 'gridlock-sdk/dist/types/guardian.type.d.ts';
-import type { ILoginResponse } from 'gridlock-sdk/dist/types/auth.type.d.ts';
+import type { AccessAndRefreshTokens } from 'gridlock-sdk/dist/types/auth.type.d.ts';
 
 const GUARDIANS_DIR = path.join(os.homedir(), '.gridlock-cli', 'guardians');
 const USERS_DIR = path.join(os.homedir(), '.gridlock-cli', 'users');
@@ -24,11 +24,17 @@ export function loadToken({ email, type }: { email: string; type: string }) {
   if (!fs.existsSync(filePath)) {
     return null;
   }
-  const { authTokens } = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  const authTokens = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
   return authTokens[type]?.token || null;
 }
 
-export function saveTokens({ authTokens, email }: { authTokens: ILoginResponse; email: string }) {
+export function saveTokens({
+  authTokens,
+  email,
+}: {
+  authTokens: AccessAndRefreshTokens;
+  email: string;
+}) {
   if (!fs.existsSync(TOKENS_DIR)) {
     fs.mkdirSync(TOKENS_DIR, { recursive: true });
   }
@@ -45,8 +51,23 @@ export function saveKey({ identifier, key, type }: { identifier: string; key: an
   fs.writeFileSync(filePath, JSON.stringify({ ...key, checksum }, null, 2));
 }
 
-export function loadKey({ nodeId, type }: { nodeId: string; type: string }) {
-  const filePath = path.join(KEYS_DIR, `${nodeId}.${type}.key.json`);
+/**
+ * Loads a key of a specified type defined by the identifier.
+ *
+ * @param {Object} params - The parameters for loading the key.
+ * @param {string} params.identifier - The identifier for the entity associated with the key.
+ * @param {string} params.type - The type of the key (e.g., private, public, signing).
+ *
+ * @returns {Object|null} The key data if the key file exists and passes the integrity check, otherwise null.
+ *
+ * @throws {Error} If the key file integrity check fails.
+ *
+ * @remarks
+ * - `private` and `public` types are used for node identity to facilitate encrypted E2E communication.
+ * - `signing` type is used to sign transactions.
+ */
+export function loadKey({ identifier, type }: { identifier: string; type: string }) {
+  const filePath = path.join(KEYS_DIR, `${identifier}.${type}.key.json`);
   if (!fs.existsSync(filePath)) {
     return null;
   }
@@ -78,6 +99,14 @@ export function loadGuardians(): IGuardian[] {
     const filePath = path.join(GUARDIANS_DIR, file);
     return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
   });
+}
+
+export function loadGuardian({ nodeId }: { nodeId: string }): IGuardian | null {
+  const filePath = path.join(GUARDIANS_DIR, `${nodeId}.guardian.json`);
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 }
 
 export function saveUser({ user }: { user: IUser }) {

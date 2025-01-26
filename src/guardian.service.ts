@@ -63,7 +63,7 @@ export async function addCloudGuardian({
     return;
   }
 
-  const response = await gridlock.addGuardian(guardian, isOwnerGuardian);
+  const response = await gridlock.addGuardian({ guardian, isOwnerGuardian });
   if (response.success) {
     saveUser({ user: response.data });
     spinner.succeed('Guardian assigned successfully');

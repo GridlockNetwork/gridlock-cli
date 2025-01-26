@@ -5,7 +5,7 @@ import { API_KEY, BASE_URL, DEBUG_MODE } from './constants.js';
 import { SUPPORTED_COINS } from 'gridlock-sdk';
 import { showNetwork, showAvailableGuardians } from './network.service.js';
 import { addGridlockGuardian, addCloudGuardian } from './guardian.service.js';
-import { login } from './auth.service.js';
+import { login, encryptContents } from './auth.service.js';
 import { createWallet, signTransaction } from './wallet.service.js';
 import { createUser } from './user.service.js';
 export const gridlock = new GridlockSdk({
@@ -244,18 +244,27 @@ program
         console.log('Login failed');
     }
 });
-// program
-//   .command('test')
-//   .description('Test the encryptContents function')
-//   .option('-c, --content <content>', 'Content to encrypt')
-//   .action(async (options) => {
-//     if (options.content) {
-//       const encrypted = await encryptContents({ content: options.content });
-//       console.log('Encrypted content:', encrypted);
-//     } else {
-//       console.log('Please provide content to encrypt using the --content option.');
-//     }
-//   });
+program
+    .command('test')
+    .description('Test the encryptContents function')
+    .option('-e, --email <email>', 'User email')
+    .option('-p, --password <password>', 'User password')
+    .option('-c, --content <content>', 'Content to encrypt')
+    .option('-t, --target <target>', 'Public key of the target node')
+    .action(async (options) => {
+    if (options.content && options.email && options.password && options.target) {
+        const encrypted = await encryptContents({
+            email: options.email,
+            password: options.password,
+            content: options.content,
+            target: options.target,
+        });
+        // console.log('Encrypted content:', encrypted);
+    }
+    else {
+        console.log('Please provide content, email, password, and target public key using the respective options.');
+    }
+});
 // ---------------- RUN PROGRAM ----------------
 program.parseAsync(process.argv);
 //# sourceMappingURL=gridlock.js.map

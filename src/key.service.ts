@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import nacl from 'tweetnacl';
+import { fromSeed, createUser, encode, createCurve, decode } from '@nats-io/nkeys';
 
 async function deriveKey(password: string, salt: Buffer): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -58,10 +59,10 @@ export async function generateSigningKey(): Promise<Buffer> {
 }
 
 export function generateIdentityKey(): { privateKey: string; publicKey: string } {
-  const keyPair = nacl.box.keyPair();
-  const privateKey = Buffer.from(keyPair.secretKey);
-  const publicKey = Buffer.from(keyPair.publicKey);
-  return { privateKey: privateKey.toString('base64'), publicKey: publicKey.toString('base64') };
+  const guardianKeyPair = createCurve();
+  const publicKey = guardianKeyPair.getPublicKey();
+  const privateKey = guardianKeyPair.getPrivateKey();
+  return { privateKey: encode(privateKey), publicKey: publicKey };
 }
 
 /**

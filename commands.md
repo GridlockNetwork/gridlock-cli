@@ -31,7 +31,7 @@ clear && node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n g
 extra dev node
 
 ```bash
-clear && node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n dev -i 73ce2d39-4818-4a58-91e2-ec843c47824c -k UD7IGIOE73GODZHL4FH4R5ZGEWC5M4VWL2FH4QFPOXN65ZHWEN3CMTDR
+clear && node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n dev -i 8e967dad-7f01-4249-862a-4ca5551eaf9d -k XC6O2H45F63JB45N3PX5MZYIXAPVBE7ONWRPR57UDX2IJ44YWENQUMOW
 ```
 
 # Create a wallet
@@ -64,4 +64,8 @@ clear && node dist/gridlock.js login -e 1@1.com -p password
 
 ```bash
 clear && node dist/gridlock.js show-network -e 1@1.com
+```
+
+```bash
+clear && node dist/gridlock.js test -e 1@1.com -p password -c hello -t 8e967dad-7f01-4249-862a-4ca5551eaf9d
 ```

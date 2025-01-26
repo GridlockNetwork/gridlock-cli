@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import nacl from 'tweetnacl';
+import { encode, createCurve } from '@nats-io/nkeys';
 async function deriveKey(password, salt) {
     return new Promise((resolve, reject) => {
         crypto.scrypt(password, salt, 32, { N: 16384, r: 8, p: 1 }, (err, derivedKey) => {
@@ -50,10 +50,10 @@ export async function generateSigningKey() {
     return crypto.randomBytes(32);
 }
 export function generateIdentityKey() {
-    const keyPair = nacl.box.keyPair();
-    const privateKey = Buffer.from(keyPair.secretKey);
-    const publicKey = Buffer.from(keyPair.publicKey);
-    return { privateKey: privateKey.toString('base64'), publicKey: publicKey.toString('base64') };
+    const guardianKeyPair = createCurve();
+    const publicKey = guardianKeyPair.getPublicKey();
+    const privateKey = guardianKeyPair.getPrivateKey();
+    return { privateKey: encode(privateKey), publicKey: publicKey };
 }
 /**
  * Derives a stronger, unique node-specific key using HKDF.
