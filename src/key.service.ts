@@ -1,8 +1,6 @@
 import crypto from 'crypto';
 import nacl from 'tweetnacl';
 
-import sodium from 'libsodium-wrappers';
-import { fromSeed, createUser, encode, createCurve, decode } from '@nats-io/nkeys';
 import { loadKey } from './storage.service.js';
 import type { NodePassword, PasswordBundle } from 'gridlock-sdk/dist/types/wallet.type.d.ts';
 import type { IUser } from 'gridlock-sdk/dist/types/user.type.d.ts';
@@ -65,11 +63,11 @@ export async function decryptKey({
 export async function generateSigningKey(): Promise<string> {
   return crypto.randomBytes(32).toString('base64');
 }
-export function generateIdentityKey(): { publicKey: string; seed: string } {
-  const guardianKeyPair = createCurve();
-  const publicKey = guardianKeyPair.getPublicKey();
-  const seed = guardianKeyPair.getSeed();
-  return { publicKey: publicKey, seed: encode(seed) };
+export function generateE2EKey(): { publicKey: string; privateKey: string } {
+  const keyPair = nacl.box.keyPair();
+  const publicKey = Buffer.from(keyPair.publicKey).toString('base64');
+  const privateKey = Buffer.from(keyPair.secretKey).toString('base64');
+  return { publicKey, privateKey };
 }
 /**
  * Derives a stronger, unique node-specific key using HKDF.
@@ -94,12 +92,18 @@ export async function encryptContents({
   identifier: string;
   password: string;
 }): Promise<string> {
-  const encryptedKeyPairSeed = loadKey({ identifier, type: 'seed' });
-  console.log('Encrypted key pair seed:', encryptedKeyPairSeed); // debug
-  const keyPairSeed = await decryptKey({ encryptedKeyObject: encryptedKeyPairSeed, password });
-  console.log('Decrypted key pair seed:', keyPairSeed); // debug
-  const userKeyPair = fromSeed(decode(keyPairSeed));
-  return encode(userKeyPair.seal(Buffer.from(content), publicKey));
+  const encryptedPrivateKey = loadKey({ identifier, type: 'private' });
+  const privateKey = await decryptKey({ encryptedKeyObject: encryptedPrivateKey, password });
+  const privateKeyBuffer = Buffer.from(privateKey, 'base64');
+
+  const keyPair = nacl.box.keyPair.fromSecretKey(privateKeyBuffer);
+  const nonce = nacl.randomBytes(nacl.box.nonceLength);
+  const messageUint8 = new TextEncoder().encode(content);
+  const publicKeyUint8 = Buffer.from(publicKey, 'base64');
+
+  const encryptedMessage = nacl.box(messageUint8, nonce, publicKeyUint8, keyPair.secretKey);
+
+  return Buffer.concat([nonce, Buffer.from(encryptedMessage)]).toString('base64');
 }
 
 export async function generatePasswordBundle({
@@ -109,33 +113,23 @@ export async function generatePasswordBundle({
   user: IUser;
   password: string;
 }): Promise<PasswordBundle> {
-  console.log('Generating password bundle for user:'); // debug
   const signingKey = await loadKey({ identifier: user.email, type: 'signing' });
-  console.log('Loaded signing key:', signingKey); // debug
   const decryptedSigningKey = await decryptKey({
     encryptedKeyObject: signingKey,
     password,
   });
-  console.log('Decrypted signing key:', decryptedSigningKey); // debug
 
   const nodes: NodePassword[] = [];
   const nodePool = user.nodePool;
-  console.log('Node pool:', nodePool); // debug
 
   for (const n of nodePool) {
-    console.log('Generating node signing key for node:', n.nodeId); // debug
     const nodeSigningKey = getNodeSigningKey(Buffer.from(decryptedSigningKey, 'base64'), n.nodeId);
-    console.log(nodeSigningKey); // debug
-    console.log(`Node ID: ${n.nodeId}, Node Signing Keyy: ${nodeSigningKey}`); // debug
-
     const encryptedContent = await encryptContents({
       content: nodeSigningKey,
       publicKey: n.publicKey,
       identifier: user.email,
       password,
     });
-    console.log(`Encrypted content for node ${n.nodeId}: ${encryptedContent}`); // debug
-
     nodes.push({ nodeId: n.nodeId, encryptedSigningKey: encryptedContent });
   }
 

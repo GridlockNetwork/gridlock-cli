@@ -4,7 +4,7 @@ import { API_KEY, BASE_URL, DEBUG_MODE } from './constants';
 import chalk from 'chalk';
 
 import { gridlock } from './gridlock.js';
-import { generateIdentityKey, encryptKey, generateSigningKey } from './key.service.js';
+import { generateE2EKey, encryptKey, generateSigningKey } from './key.service.js';
 import type { IRegisterData } from 'gridlock-sdk/dist/types/user.type.d.ts';
 
 /**
@@ -55,13 +55,13 @@ export async function createUser({
 }
 
 async function createUserKeys(email: string, password: string) {
-  const { publicKey, seed } = generateIdentityKey();
-  console.log('seed:', seed); //debug
+  const { publicKey, privateKey } = generateE2EKey();
+  console.log('pk:', privateKey); //debug
   const encryptedPublicKey = await encryptKey({ key: publicKey, password });
-  const encryptedSeed = await encryptKey({ key: seed, password });
+  const encryptedPrivateKey = await encryptKey({ key: privateKey, password });
 
   saveKey({ identifier: email, key: encryptedPublicKey, type: 'public' });
-  saveKey({ identifier: email, key: encryptedSeed, type: 'seed' });
+  saveKey({ identifier: email, key: encryptedPrivateKey, type: 'private' });
 
   const signingKey = await generateSigningKey();
   const encryptedSigningKey = await encryptKey({ key: signingKey, password });

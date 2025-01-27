@@ -16,9 +16,9 @@ export declare function decryptKey({ encryptedKeyObject, password, }: {
     password: string;
 }): Promise<string>;
 export declare function generateSigningKey(): Promise<string>;
-export declare function generateIdentityKey(): {
+export declare function generateE2EKey(): {
     publicKey: string;
-    seed: string;
+    privateKey: string;
 };
 /**
  * Derives a stronger, unique node-specific key using HKDF.
