@@ -5,10 +5,10 @@ interface UserCredentials {
 }
 export declare function login({ email, password }: UserCredentials): Promise<AccessAndRefreshTokens | null>;
 interface E2EEncryptionParams {
-    email: string;
+    recieverPrivKeyIdentifier: string;
     password: string;
-    content: string;
-    target: string;
+    message: string;
+    senderPubKey: string;
 }
-export declare function encryptContents({ email, password, content, target, }: E2EEncryptionParams): Promise<string | null>;
+export declare function decryptmessage({ recieverPrivKeyIdentifier, password, message, senderPubKey, }: E2EEncryptionParams): Promise<string | null>;
 export {};

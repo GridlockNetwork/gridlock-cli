@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import nacl from 'tweetnacl';
 
 import { loadKey } from './storage.service.js';
-import type { NodePassword, PasswordBundle } from 'gridlock-sdk/dist/types/wallet.type.d.ts';
+import type { INodePassword, IPasswordBundle } from 'gridlock-sdk/dist/types/wallet.type.d.ts';
 import type { IUser } from 'gridlock-sdk/dist/types/user.type.d.ts';
 
 async function deriveKey(password: string, salt: Buffer): Promise<Buffer> {
@@ -13,11 +13,12 @@ async function deriveKey(password: string, salt: Buffer): Promise<Buffer> {
     });
   });
 }
+
 export async function encryptKey({ key, password }: { key: string; password: string }) {
   const salt = crypto.randomBytes(16);
   const derivedKey = await deriveKey(password, salt);
   const stretchedKey = crypto.createHash('sha256').update(derivedKey).digest();
-  const iv = crypto.randomBytes(12); // Random IV for AES-GCM
+  const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', stretchedKey, iv);
   const encryptedKey = Buffer.concat([cipher.update(key, 'utf8'), cipher.final()]);
   const authTag = cipher.getAuthTag();
@@ -31,6 +32,7 @@ export async function encryptKey({ key, password }: { key: string; password: str
     createdAt: new Date().toISOString(),
   };
 }
+
 export async function decryptKey({
   encryptedKeyObject,
   password,
@@ -60,21 +62,18 @@ export async function decryptKey({
     throw new Error('Decryption failed. Please check your password and try again.');
   }
 }
+
 export async function generateSigningKey(): Promise<string> {
   return crypto.randomBytes(32).toString('base64');
 }
+
 export function generateE2EKey(): { publicKey: string; privateKey: string } {
   const keyPair = nacl.box.keyPair();
   const publicKey = Buffer.from(keyPair.publicKey).toString('base64');
   const privateKey = Buffer.from(keyPair.secretKey).toString('base64');
   return { publicKey, privateKey };
 }
-/**
- * Derives a stronger, unique node-specific key using HKDF.
- * @param {Buffer} signingKey - The encrypted signing key.
- * @param {string} nodeId - The unique node ID.
- * @returns {string} - A unique per-node derived key.
- */
+
 export function getNodeSigningKey(signingKey: Buffer, nodeId: string): string {
   return Buffer.from(
     crypto.hkdfSync('sha256', signingKey, Buffer.from(nodeId), Buffer.from('node-auth'), 32)
@@ -94,13 +93,10 @@ export async function encryptContents({
 }): Promise<string> {
   const encryptedPrivateKey = loadKey({ identifier, type: 'private' });
   const privateKey = await decryptKey({ encryptedKeyObject: encryptedPrivateKey, password });
-  const privateKeyBuffer = Buffer.from(privateKey, 'base64');
-
-  const keyPair = nacl.box.keyPair.fromSecretKey(privateKeyBuffer);
+  const keyPair = nacl.box.keyPair.fromSecretKey(Buffer.from(privateKey, 'base64'));
   const nonce = nacl.randomBytes(nacl.box.nonceLength);
   const messageUint8 = new TextEncoder().encode(content);
   const publicKeyUint8 = Buffer.from(publicKey, 'base64');
-
   const encryptedMessage = nacl.box(messageUint8, nonce, publicKeyUint8, keyPair.secretKey);
 
   return Buffer.concat([nonce, Buffer.from(encryptedMessage)]).toString('base64');
@@ -112,14 +108,14 @@ export async function generatePasswordBundle({
 }: {
   user: IUser;
   password: string;
-}): Promise<PasswordBundle> {
+}): Promise<IPasswordBundle> {
   const signingKey = await loadKey({ identifier: user.email, type: 'signing' });
   const decryptedSigningKey = await decryptKey({
     encryptedKeyObject: signingKey,
     password,
   });
 
-  const nodes: NodePassword[] = [];
+  const nodes: INodePassword[] = [];
   const nodePool = user.nodePool;
 
   for (const n of nodePool) {

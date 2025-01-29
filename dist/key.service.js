@@ -15,7 +15,7 @@ export async function encryptKey({ key, password }) {
     const salt = crypto.randomBytes(16);
     const derivedKey = await deriveKey(password, salt);
     const stretchedKey = crypto.createHash('sha256').update(derivedKey).digest();
-    const iv = crypto.randomBytes(12); // Random IV for AES-GCM
+    const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv('aes-256-gcm', stretchedKey, iv);
     const encryptedKey = Buffer.concat([cipher.update(key, 'utf8'), cipher.final()]);
     const authTag = cipher.getAuthTag();
@@ -58,20 +58,13 @@ export function generateE2EKey() {
     const privateKey = Buffer.from(keyPair.secretKey).toString('base64');
     return { publicKey, privateKey };
 }
-/**
- * Derives a stronger, unique node-specific key using HKDF.
- * @param {Buffer} signingKey - The encrypted signing key.
- * @param {string} nodeId - The unique node ID.
- * @returns {string} - A unique per-node derived key.
- */
 export function getNodeSigningKey(signingKey, nodeId) {
     return Buffer.from(crypto.hkdfSync('sha256', signingKey, Buffer.from(nodeId), Buffer.from('node-auth'), 32)).toString('base64');
 }
 export async function encryptContents({ content, publicKey, identifier, password, }) {
     const encryptedPrivateKey = loadKey({ identifier, type: 'private' });
     const privateKey = await decryptKey({ encryptedKeyObject: encryptedPrivateKey, password });
-    const privateKeyBuffer = Buffer.from(privateKey, 'base64');
-    const keyPair = nacl.box.keyPair.fromSecretKey(privateKeyBuffer);
+    const keyPair = nacl.box.keyPair.fromSecretKey(Buffer.from(privateKey, 'base64'));
     const nonce = nacl.randomBytes(nacl.box.nonceLength);
     const messageUint8 = new TextEncoder().encode(content);
     const publicKeyUint8 = Buffer.from(publicKey, 'base64');

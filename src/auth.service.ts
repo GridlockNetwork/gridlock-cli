@@ -76,16 +76,30 @@ async function loginWithKey({
   }
 }
 interface E2EEncryptionParams {
-  email: string;
+  recieverPrivKeyIdentifier: string;
   password: string;
-  content: string;
-  target: string;
+  message: string;
+  senderPubKey: string;
 }
-export async function encryptContents({
-  email,
+export async function decryptmessage({
+  recieverPrivKeyIdentifier,
   password,
-  content,
-  target,
+  message,
+  senderPubKey,
 }: E2EEncryptionParams): Promise<string | null> {
-  return null;
+  const privateKey = recieverPrivKeyIdentifier;
+  const privateKeyBuffer = Buffer.from(privateKey, 'base64');
+  const kp = nacl.box.keyPair.fromSecretKey(privateKeyBuffer).secretKey;
+  const publicKey = Buffer.from(senderPubKey, 'base64');
+  const messageBuffer = Buffer.from(message, 'base64');
+  const nonce = messageBuffer.slice(0, nacl.box.nonceLength);
+  const ciphertext = messageBuffer.slice(nacl.box.nonceLength);
+  const decryptedMessage = nacl.box.open(ciphertext, nonce, publicKey, kp);
+
+  if (!decryptedMessage) {
+    console.error('Failed to decrypt message.');
+    return null;
+  }
+
+  return Buffer.from(decryptedMessage).toString('utf-8');
 }

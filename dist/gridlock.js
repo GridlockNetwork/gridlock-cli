@@ -5,7 +5,7 @@ import { API_KEY, BASE_URL, DEBUG_MODE } from './constants.js';
 import { SUPPORTED_COINS } from 'gridlock-sdk';
 import { showNetwork, showAvailableGuardians } from './network.service.js';
 import { addGridlockGuardian, addCloudGuardian } from './guardian.service.js';
-import { login, encryptContents } from './auth.service.js';
+import { login, decryptmessage } from './auth.service.js';
 import { createWallet, signTransaction } from './wallet.service.js';
 import { createUser } from './user.service.js';
 export const gridlock = new GridlockSdk({
@@ -247,17 +247,17 @@ program
 program
     .command('test')
     .description('Test the encryptContents function')
-    .option('-e, --email <email>', 'User email')
+    .option('-i, --email <email>', 'User email')
     .option('-p, --password <password>', 'User password')
-    .option('-c, --content <content>', 'Content to encrypt')
-    .option('-t, --target <target>', 'Public key of the target node')
+    .option('-m, --message <message>', 'Content to decrypt')
+    .option('-s, --sender <sender>', 'Public key of the target node')
     .action(async (options) => {
-    if (options.content && options.email && options.password && options.target) {
-        const encrypted = await encryptContents({
-            email: options.email,
+    if (options.message && options.email && options.password && options.sender) {
+        const encrypted = await decryptmessage({
+            recieverPrivKeyIdentifier: options.email,
             password: options.password,
-            content: options.content,
-            target: options.target,
+            message: options.message,
+            senderPubKey: options.sender,
         });
         // console.log('Encrypted content:', encrypted);
     }

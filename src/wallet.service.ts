@@ -34,25 +34,30 @@ export async function createWallet({ email, password, blockchain }: CreateWallet
   const spinner = ora('Creating wallet...').start();
 
   const passwordBundle = await generatePasswordBundle({ user, password });
-  console.log(passwordBundle); //debug
 
-  // const response = await gridlock.createWallet({ blockchain, user, passwordBundle });
-  // if (!response.success) {
-  //   spinner.fail(
-  //     `Failed to create wallet\nError: ${response.error.message} (Code: ${response.error.code})${
-  //       response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''
-  //     }`
-  //   );
-  //   return;
-  // }
+  const createWalletData = {
+    blockchain,
+    user,
+    // passwordBundle,
+  };
+
+  const response = await gridlock.createWallet(createWalletData);
+  if (!response.success) {
+    spinner.fail(
+      `Failed to create wallet\nError: ${response.error.message} (Code: ${response.error.code})${
+        response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''
+      }`
+    );
+    return;
+  }
 
   spinner.succeed('Wallet created successfully');
-  // const wallet = response.data;
-  // console.log(
-  //   `  ${blockchain.charAt(0).toUpperCase() + blockchain.slice(1).toLowerCase()} - ${
-  //     wallet.address
-  //   }`
-  // );
+  const wallet = response.data;
+  console.log(
+    `  ${blockchain.charAt(0).toUpperCase() + blockchain.slice(1).toLowerCase()} - ${
+      wallet.address
+    }`
+  );
 }
 
 export async function signTransaction({

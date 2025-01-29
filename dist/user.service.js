@@ -34,7 +34,6 @@ export async function createUser({ name, email, password, }) {
 }
 async function createUserKeys(email, password) {
     const { publicKey, privateKey } = generateE2EKey();
-    console.log('pk:', privateKey); //debug
     const encryptedPublicKey = await encryptKey({ key: publicKey, password });
     const encryptedPrivateKey = await encryptKey({ key: privateKey, password });
     saveKey({ identifier: email, key: encryptedPublicKey, type: 'public' });
