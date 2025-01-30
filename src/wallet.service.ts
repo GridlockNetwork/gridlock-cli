@@ -1,5 +1,5 @@
 import ora from 'ora';
-import { loadUser } from './storage.service.js';
+import { loadUser, saveWallet, loadWallet } from './storage.service.js';
 
 import { login } from './auth.service.js';
 import { API_KEY, BASE_URL, DEBUG_MODE } from './constants';
@@ -12,10 +12,10 @@ interface CreateWalletParams {
   blockchain: string;
 }
 
-interface SignTransactionParams {
+interface signTransactionParams {
   email: string;
   password: string;
-  blockchain: string;
+  address: string;
   message: string;
 }
 
@@ -36,9 +36,9 @@ export async function createWallet({ email, password, blockchain }: CreateWallet
   const passwordBundle = await generatePasswordBundle({ user, password });
 
   const createWalletData = {
-    blockchain,
     user,
-    // passwordBundle,
+    blockchain,
+    passwordBundle,
   };
 
   const response = await gridlock.createWallet(createWalletData);
@@ -58,26 +58,42 @@ export async function createWallet({ email, password, blockchain }: CreateWallet
       wallet.address
     }`
   );
+
+  saveWallet({ wallet });
 }
 
 export async function signTransaction({
   email,
   password,
-  blockchain,
+  address,
   message,
-}: SignTransactionParams) {
+}: signTransactionParams) {
   const user = loadUser({ email });
   if (!user) {
     console.error('User not found');
     return;
   }
+  const spinner = ora('Signing transaction...').start();
   const token = await login({ email, password });
   if (!token) {
     return;
   }
 
-  const spinner = ora('Signing transaction...').start();
-  const response = await gridlock.sign(message, blockchain, user);
+  const wallet = loadWallet({ address });
+  if (!wallet) {
+    console.error('Wallet not found');
+    return;
+  }
+
+  console.log(message);
+
+  const signTransactionData = {
+    user,
+    wallet,
+    message,
+  };
+
+  const response = await gridlock.sign(signTransactionData);
   if (!response.success) {
     spinner.fail(
       `Failed to sign transaction\nError: ${response.error.message} (Code: ${response.error.code})${

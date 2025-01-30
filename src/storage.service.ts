@@ -10,6 +10,7 @@ const GUARDIANS_DIR = path.join(os.homedir(), '.gridlock-cli', 'guardians');
 const USERS_DIR = path.join(os.homedir(), '.gridlock-cli', 'users');
 const TOKENS_DIR = path.join(os.homedir(), '.gridlock-cli', 'tokens');
 const KEYS_DIR = path.join(os.homedir(), '.gridlock-cli', 'keys');
+const WALLETS_DIR = path.join(os.homedir(), '.gridlock-cli', 'wallets');
 
 /**
  * Loads the token for the specified email and token type.
@@ -119,6 +120,22 @@ export function saveUser({ user }: { user: IUser }) {
 
 export function loadUser({ email }: { email: string }): IUser | null {
   const filePath = path.join(USERS_DIR, `${email}.user.json`);
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+}
+
+export function saveWallet({ wallet }: { wallet: any }) {
+  if (!fs.existsSync(WALLETS_DIR)) {
+    fs.mkdirSync(WALLETS_DIR, { recursive: true });
+  }
+  const filePath = path.join(WALLETS_DIR, `${wallet.address}.wallet.json`);
+  fs.writeFileSync(filePath, JSON.stringify(wallet, null, 2) + '\n');
+}
+
+export function loadWallet({ address }: { address: string }) {
+  const filePath = path.join(WALLETS_DIR, `${address}.wallet.json`);
   if (!fs.existsSync(filePath)) {
     return null;
   }

@@ -11,7 +11,7 @@ export async function getGridlockGuardians() {
         console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
         return null;
     }
-    const guardians = response.data;
+    const guardians = Array.isArray(response.data) ? response.data : [];
     spinner.succeed('Gridlock guardians retrieved successfully');
     return guardians;
 }

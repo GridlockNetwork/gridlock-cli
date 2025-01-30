@@ -5,7 +5,7 @@ import { showAvailableGuardians } from './network.service.js';
 import { gridlock } from './gridlock.js';
 import type { IGuardian } from 'gridlock-sdk/dist/types/guardian.type.d.ts';
 
-export async function getGridlockGuardians() {
+export async function getGridlockGuardians(): Promise<IGuardian[] | null> {
   const spinner = ora('Retrieving Gridlock guardians...').start();
   const response = await gridlock.getGridlockGuardians();
   if (!response.success) {
@@ -13,7 +13,7 @@ export async function getGridlockGuardians() {
     console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
     return null;
   }
-  const guardians = response.data;
+  const guardians = Array.isArray(response.data) ? (response.data as IGuardian[]) : [];
   spinner.succeed('Gridlock guardians retrieved successfully');
   return guardians;
 }

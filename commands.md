@@ -34,6 +34,15 @@ extra dev node
 clear && node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n dev -i f6808a86-de71-42bc-8a4e-745ecdcf4d59 -k 7l9XVjtAax40b7gfbBohR5IgU7D2Polnta/YI0FfplE=
 ```
 
+# ALL FOR TESTING
+
+```bash
+node dist/gridlock.js create-user -n "derek rodriguez" -e 1@1.com -p password
+node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n ownerGuardian -i f08f4833-3ce1-4e0b-9de2-96cd969df434 -k s6VTHsJ5uqnFjrFVqerBjgGPcw5zZ2cVdKwj9XEyLUU -o
+node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n guardian1 -i 40ffd6a1-8191-4bc5-a1ba-ec300c8da1c6 -k 7l9XVjtAax40b7gfbBohR5IgU7D2Polnta/YI0FfplE=
+node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n guardian2 -i e2bb515f-31e6-4f12-a80d-a4bd8a1215d8 -k Zos8ukwJEL7TFvrtinuV9AQNC2if3rwcb55HJLnpIlQ=
+```
+
 # Create a wallet
 
 Create a wallet for a user.
@@ -47,7 +56,7 @@ clear && node dist/gridlock.js create-wallet -e 1@1.com -p password -b solana
 Sign a message for the user.
 
 ```bash
-clear && node dist/gridlock.js sign -e 1@1.com -p password -b solana -m hello
+clear && node dist/gridlock.js sign -e 1@1.com -p password -a E2D5Bue8P3AFMAUN1bm5d3cXKjNnmnMvNptAYQSb5FHS -m hello
 ```
 
 # Extra debug functions

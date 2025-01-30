@@ -117,13 +117,13 @@ const signTransactionInquire = async () => {
   const answers = await inquirer.prompt([
     { type: 'input', name: 'email', message: 'User email:' },
     { type: 'password', name: 'password', message: 'Network access password:' },
-    { type: 'list', name: 'blockchain', message: 'Select blockchain:', choices: SUPPORTED_COINS },
+    { type: 'list', name: 'address', message: 'Select address:' },
     { type: 'input', name: 'message', message: 'Message to be signed:' },
   ]);
   await signTransaction({
     email: answers.email,
     password: answers.password,
-    blockchain: answers.blockchain,
+    address: answers.address,
     message: answers.message,
   });
 };
@@ -216,14 +216,14 @@ program
   .description('Sign a transaction')
   .option('-e, --email <email>', 'User email')
   .option('-p, --password <password>', 'Network access password')
-  .option('-b, --blockchain <blockchain>', 'Blockchain to use')
+  .option('-a, --address <address>', 'Blockchain to use')
   .option('-m, --message <message>', 'Message to be signed')
   .action(async (options) => {
-    if (options.email && options.password && options.blockchain && options.message) {
+    if (options.email && options.password && options.address && options.message) {
       await signTransaction({
         email: options.email,
         password: options.password,
-        blockchain: options.blockchain,
+        address: options.address,
         message: options.message,
       });
     } else {

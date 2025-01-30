@@ -54,3 +54,9 @@ export declare function saveUser({ user }: {
 export declare function loadUser({ email }: {
     email: string;
 }): IUser | null;
+export declare function saveWallet({ wallet }: {
+    wallet: any;
+}): void;
+export declare function loadWallet({ address }: {
+    address: string;
+}): any;
