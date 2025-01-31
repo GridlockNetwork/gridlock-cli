@@ -1,26 +1,91 @@
 import ora from 'ora';
 import { loadGuardians, saveGuardian, saveUser } from './storage.service.js';
-import { login } from './auth.service.js';
 import { showAvailableGuardians } from './network.service.js';
 import { gridlock } from './gridlock.js';
 import type { IGuardian } from 'gridlock-sdk/dist/types/guardian.type.d.ts';
+import inquirer from 'inquirer';
+import * as user from './user.service.js';
 
-export async function getGridlockGuardians(): Promise<IGuardian[] | null> {
-  const spinner = ora('Retrieving Gridlock guardians...').start();
-  const response = await gridlock.getGridlockGuardians();
-  if (!response.success) {
-    spinner.fail('Failed to retrieve Gridlock guardians');
-    console.error(`Error: ${response.error.message} (Code: ${response.error.code})`);
-    return null;
+export const addGuardianInquire = async (options: {
+  email?: string;
+  password?: string;
+  guardianType?: string;
+  isOwnerGuardian?: boolean;
+  name?: string;
+  nodeId?: string;
+  publicKey?: string;
+}) => {
+  let { email, password, guardianType, isOwnerGuardian, name, nodeId, publicKey } = options;
+
+  if (!email || !password) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'email', message: 'User email:' },
+      { type: 'password', name: 'password', message: 'User password:' },
+    ]);
+    email = answers.email;
+    password = answers.password;
   }
-  const guardians = Array.isArray(response.data) ? (response.data as IGuardian[]) : [];
-  spinner.succeed('Gridlock guardians retrieved successfully');
-  return guardians;
-}
 
-export async function addGridlockGuardian() {
+  if (!guardianType) {
+    const answers = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'guardianType',
+        message: 'Select the type of guardian to add:',
+        choices: [
+          { name: 'Gridlock Guardian', value: 'gridlock' },
+          { name: 'Cloud Guardian', value: 'cloud' },
+        ],
+      },
+    ]);
+    guardianType = answers.guardianType;
+  }
+  if (guardianType === 'gridlock') {
+    await addGridlockGuardian();
+  } else if (guardianType === 'cloud') {
+    if (!name || !nodeId || !publicKey) {
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'name', message: 'Guardian name:' },
+        { type: 'input', name: 'nodeId', message: 'Node ID:' },
+        { type: 'input', name: 'publicKey', message: 'Guardian public key:' },
+        {
+          type: 'confirm',
+          name: 'isOwnerGuardian',
+          message: 'Is this the owner guardian?',
+          default: false,
+        },
+      ]);
+      name = answers.name;
+      nodeId = answers.nodeId;
+      publicKey = answers.publicKey;
+      isOwnerGuardian = answers.isOwnerGuardian;
+    }
+
+    const guardianData = {
+      name: name!,
+      nodeId: nodeId!,
+      publicKey: publicKey!,
+      type: 'cloudGuardian',
+      active: true,
+    };
+
+    const addGuardianParams = {
+      email: email!,
+      password: password!,
+      guardian: guardianData,
+      isOwnerGuardian: isOwnerGuardian!,
+    };
+
+    // @ts-ignore - the use of inquirer ensures that variables cannot be null
+    await addCloudGuardian(addGuardianParams);
+  } else {
+    console.error('Invalid guardian type. Please specify "gridlock" or "cloud".');
+  }
+};
+
+async function addGridlockGuardian() {
   const spinner = ora('Retrieving Gridlock guardian...').start();
-  const gridlockGuardians = await getGridlockGuardians();
+  const gridlockGuardians = await gridlock.getGridlockGuardians();
   if (!gridlockGuardians) {
     spinner.fail('Failed to retrieve Gridlock guardians');
     return;
@@ -42,7 +107,7 @@ export async function addGridlockGuardian() {
   await showAvailableGuardians();
 }
 
-export async function addCloudGuardian({
+async function addCloudGuardian({
   email,
   password,
   guardian,
@@ -55,20 +120,10 @@ export async function addCloudGuardian({
 }) {
   const spinner = ora('Adding guardian...').start();
 
-  saveGuardian({ guardian });
-
-  const authTokens = await login({ email, password });
-  if (!authTokens) {
-    spinner.fail('Login failed.');
-    return;
-  }
-
-  const response = await gridlock.addGuardian({ guardian, isOwnerGuardian });
-  if (response.success) {
-    saveUser({ user: response.data });
+  try {
+    const response = await gridlock.addGuardian({ email, password, guardian, isOwnerGuardian });
     spinner.succeed('Guardian assigned successfully');
-  } else {
-    spinner.fail('Failed to assign guardian.');
-    console.error('Failed to assign guardian:', response.error);
+  } catch {
+    spinner.fail(`Failed to assign guardian`);
   }
 }

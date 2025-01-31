@@ -3,6 +3,8 @@ import chalk from 'chalk';
 import { loadUser, loadGuardians } from './storage.service.js';
 import type { IUser } from 'gridlock-sdk/dist/types/user.type.d.ts';
 import type { IGuardian } from 'gridlock-sdk/dist/types/guardian.type.d.ts';
+import { gridlock } from './gridlock.js';
+import inquirer from 'inquirer';
 
 const guardianTypeMap = {
   'Owner Guardian': 'ownerGuardian',
@@ -11,6 +13,20 @@ const guardianTypeMap = {
   'Cloud Guardian': 'cloudGuardian',
   'Gridlock Guardian': 'gridlockGuardian',
   'Partner Guardian': 'partnerGuardian',
+};
+
+export const showNetworkInquire = async ({ email }: { email: string }) => {
+  if (!email) {
+    const answers = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'email',
+        message: 'Please enter the user email:',
+      },
+    ]);
+    email = answers.email;
+  }
+  await showNetwork({ email: email as string });
 };
 
 export function showNetwork({ email }: { email: string }) {

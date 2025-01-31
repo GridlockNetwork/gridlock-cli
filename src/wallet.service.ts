@@ -1,10 +1,61 @@
 import ora from 'ora';
 import { loadUser, saveWallet, loadWallet } from './storage.service.js';
 
-import { login } from './auth.service.js';
 import { API_KEY, BASE_URL, DEBUG_MODE } from './constants';
 import { gridlock } from './gridlock.js';
 import { generatePasswordBundle } from './key.service.js';
+import inquirer from 'inquirer';
+import { SUPPORTED_COINS } from 'gridlock-sdk';
+
+export const createWalletInquire = async (options: {
+  email?: string;
+  password?: string;
+  blockchain?: string;
+}) => {
+  let { email, password, blockchain } = options;
+  if (!email || !password || !blockchain) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'email', message: 'User email:' },
+      { type: 'password', name: 'password', message: 'Network access password:' },
+      { type: 'list', name: 'blockchain', message: 'Select blockchain:', choices: SUPPORTED_COINS },
+    ]);
+    email = answers.email;
+    password = answers.password;
+    blockchain = answers.blockchain;
+  }
+  await createWallet({
+    email: email as string,
+    password: password as string,
+    blockchain: blockchain as string,
+  });
+};
+
+export const signTransactionInquire = async (options: {
+  email?: string;
+  password?: string;
+  address?: string;
+  message?: string;
+}) => {
+  let { email, password, address, message } = options;
+  if (!email || !password || !address || !message) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'email', message: 'User email:' },
+      { type: 'password', name: 'password', message: 'Network access password:' },
+      { type: 'list', name: 'address', message: 'Select address:' },
+      { type: 'input', name: 'message', message: 'Message to be signed:' },
+    ]);
+    email = answers.email;
+    password = answers.password;
+    address = answers.address;
+    message = answers.message;
+  }
+  await signTransaction({
+    email: email as string,
+    password: password as string,
+    address: address as string,
+    message: message as string,
+  });
+};
 
 interface CreateWalletParams {
   email: string;
@@ -20,46 +71,26 @@ interface signTransactionParams {
 }
 
 export async function createWallet({ email, password, blockchain }: CreateWalletParams) {
-  const user = loadUser({ email });
-  if (!user) {
-    console.error('User not found');
-    return;
-  }
-
-  const token = await login({ email, password });
-  if (!token) {
-    return;
-  }
-
   const spinner = ora('Creating wallet...').start();
 
-  const passwordBundle = await generatePasswordBundle({ user, password });
+  try {
+    const response: any = await gridlock.createWallet(email, password, blockchain);
+    if (response.ok) {
+      const wallet = response.data;
+      console.log(
+        `  ${blockchain.charAt(0).toUpperCase() + blockchain.slice(1).toLowerCase()} - ${
+          wallet!.address
+        }`
+      );
 
-  const createWalletData = {
-    user,
-    blockchain,
-    passwordBundle,
-  };
-
-  const response = await gridlock.createWallet(createWalletData);
-  if (!response.success) {
-    spinner.fail(
-      `Failed to create wallet\nError: ${response.error.message} (Code: ${response.error.code})${
-        response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''
-      }`
-    );
-    return;
+      saveWallet({ wallet });
+      spinner.succeed('Wallet created successfully');
+    } else {
+      throw new Error('Unexpected response format');
+    }
+  } catch {
+    spinner.fail(`Failed to create wallet`);
   }
-
-  spinner.succeed('Wallet created successfully');
-  const wallet = response.data;
-  console.log(
-    `  ${blockchain.charAt(0).toUpperCase() + blockchain.slice(1).toLowerCase()} - ${
-      wallet.address
-    }`
-  );
-
-  saveWallet({ wallet });
 }
 
 export async function signTransaction({
@@ -74,10 +105,10 @@ export async function signTransaction({
     return;
   }
   const spinner = ora('Signing transaction...').start();
-  const token = await login({ email, password });
-  if (!token) {
-    return;
-  }
+  // const token = await login({ email, password });
+  // if (!token) {
+  //   return;
+  // }
 
   const wallet = loadWallet({ address });
   if (!wallet) {
@@ -93,17 +124,12 @@ export async function signTransaction({
     message,
   };
 
-  const response = await gridlock.sign(signTransactionData);
-  if (!response.success) {
-    spinner.fail(
-      `Failed to sign transaction\nError: ${response.error.message} (Code: ${response.error.code})${
-        response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''
-      }`
-    );
-    return;
+  try {
+    const response = await gridlock.sign(signTransactionData);
+    spinner.succeed('Transaction signed successfully');
+    const { signature } = response.data;
+    console.log(`Signature: ${signature}`);
+  } catch {
+    spinner.fail(`Failed to sign transaction`);
   }
-
-  spinner.succeed('Transaction signed successfully');
-  const { signature } = response.data;
-  console.log(`Signature: ${response.data}`);
 }

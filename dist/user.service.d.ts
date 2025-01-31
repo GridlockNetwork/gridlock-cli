@@ -1,3 +1,13 @@
+export declare const createUserInquire: (options: {
+    name?: string;
+    email?: string;
+    password?: string;
+}) => Promise<void>;
+interface CreateUserParams {
+    name: string;
+    email: string;
+    password: string;
+}
 /**
  * Creates a new user with the provided name, email, and password.
  *
@@ -7,8 +17,5 @@
  * @param {string} params.password - The password for the user's account.
  * @returns {Promise<void>} A promise that resolves when the user is created.
  */
-export declare function createUser({ name, email, password, }: {
-    name: string;
-    email: string;
-    password: string;
-}): Promise<void>;
+export declare const createUser: ({ name, email, password }: CreateUserParams) => Promise<void>;
+export {};

@@ -1,9 +1,3 @@
-import type { AccessAndRefreshTokens } from 'gridlock-sdk/dist/types/auth.type.d.ts';
-interface UserCredentials {
-    email: string;
-    password: string;
-}
-export declare function login({ email, password }: UserCredentials): Promise<AccessAndRefreshTokens | null>;
 interface E2EEncryptionParams {
     recieverPrivKeyIdentifier: string;
     password: string;

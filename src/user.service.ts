@@ -6,6 +6,38 @@ import chalk from 'chalk';
 import { gridlock } from './gridlock.js';
 import { generateE2EKey, encryptKey, generateSigningKey } from './key.service.js';
 import type { IRegisterData } from 'gridlock-sdk/dist/types/user.type.d.ts';
+import inquirer from 'inquirer';
+
+export const createUserInquire = async (options: {
+  name?: string;
+  email?: string;
+  password?: string;
+}) => {
+  let { name, email, password } = options;
+  if (!name || !email || !password) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'name', message: 'User name:' },
+      { type: 'input', name: 'email', message: 'User email:' },
+      { type: 'password', name: 'password', message: 'User password:' },
+    ]);
+    name = answers.name;
+    email = answers.email;
+    password = answers.password;
+  }
+  await createUser({
+    name: name as string,
+    email: email as string,
+    password: password as string,
+  });
+};
+
+// ...existing code...
+
+interface CreateUserParams {
+  name: string;
+  email: string;
+  password: string;
+}
 
 /**
  * Creates a new user with the provided name, email, and password.
@@ -16,54 +48,18 @@ import type { IRegisterData } from 'gridlock-sdk/dist/types/user.type.d.ts';
  * @param {string} params.password - The password for the user's account.
  * @returns {Promise<void>} A promise that resolves when the user is created.
  */
-export async function createUser({
-  name,
-  email,
-  password,
-}: {
-  name: string;
-  email: string;
-  password: string;
-}) {
+export const createUser = async ({ name, email, password }: CreateUserParams) => {
   const spinner = ora('Creating user...').start();
-
-  const registerData: IRegisterData = {
-    name: name
-      .split(' ')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' '),
-    email: email.toLowerCase(),
+  const registerData = {
+    name: name,
+    email: email.toLowerCase().trim(),
   };
 
-  const response = await gridlock.createUser(registerData);
-  if (!response.success) {
-    spinner.fail(
-      `Failed to create user\nError: ${response.error.message} (Code: ${response.error.code})${
-        response.raw ? `\nRaw response: ${JSON.stringify(response.raw)}` : ''
-      }`
-    );
-    return;
+  try {
+    const response = await gridlock.createUser(registerData, password);
+    const { user } = response;
+    spinner.succeed(`➕ Created account for user: ${chalk.hex('#4A90E2').bold(user.name)}`);
+  } catch {
+    spinner.fail('Failed to create user');
   }
-
-  const { user, authTokens } = response.data;
-  saveTokens({ authTokens, email });
-  saveUser({ user });
-
-  await createUserKeys(email, password);
-
-  spinner.succeed(`➕ Created account for user: ${chalk.hex('#4A90E2').bold(user.name)}`);
-}
-
-async function createUserKeys(email: string, password: string) {
-  const { publicKey, privateKey } = generateE2EKey();
-  const encryptedPublicKey = await encryptKey({ key: publicKey, password });
-  const encryptedPrivateKey = await encryptKey({ key: privateKey, password });
-
-  saveKey({ identifier: email, key: encryptedPublicKey, type: 'public' });
-  saveKey({ identifier: email, key: encryptedPrivateKey, type: 'private' });
-
-  const signingKey = await generateSigningKey();
-  const encryptedSigningKey = await encryptKey({ key: signingKey, password });
-
-  saveKey({ identifier: email, key: encryptedSigningKey, type: 'signing' });
-}
+};
