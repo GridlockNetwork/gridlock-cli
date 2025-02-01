@@ -9,17 +9,11 @@ export declare const signTransactionInquire: (options: {
     address?: string;
     message?: string;
 }) => Promise<void>;
-interface CreateWalletParams {
-    email: string;
-    password: string;
-    blockchain: string;
-}
-interface signTransactionParams {
-    email: string;
-    password: string;
-    address: string;
-    message: string;
-}
-export declare function createWallet({ email, password, blockchain }: CreateWalletParams): Promise<void>;
-export declare function signTransaction({ email, password, address, message, }: signTransactionParams): Promise<void>;
-export {};
+export declare const verifySignatureInquire: (options: {
+    email?: string;
+    password?: string;
+    message?: string;
+    address?: string;
+    blockchain?: string;
+    signature?: string;
+}) => Promise<void>;

@@ -3,8 +3,8 @@ import GridlockSdk from 'gridlock-sdk';
 import { API_KEY, BASE_URL, DEBUG_MODE } from './constants.js';
 import { createUserInquire } from './user.service.js';
 import { addGuardianInquire } from './guardian.service.js';
-import { showNetworkInquire, showAvailableGuardians } from './network.service.js';
-import { createWalletInquire, signTransactionInquire } from './wallet.service.js';
+import { showNetworkInquire, allGuardians } from './network.service.js';
+import { createWalletInquire, signTransactionInquire, verifySignatureInquire, } from './wallet.service.js';
 export const gridlock = new GridlockSdk({
     apiKey: API_KEY,
     baseUrl: BASE_URL,
@@ -25,7 +25,7 @@ program.hook('postAction', () => {
 program
     .command('show-available-guardians')
     .description('Displays the status of all guardians in the network')
-    .action(showAvailableGuardians);
+    .action(allGuardians);
 program
     .command('show-network')
     .description('Displays the guardians associated with a specific user')
@@ -44,6 +44,27 @@ program
         name: options.name,
         email: options.email,
         password: options.password,
+    });
+});
+program
+    .command('add-guardian')
+    .description("Add a guardian to a specific user's node pool")
+    .option('-e, --email <email>', 'User email')
+    .option('-p, --password <password>', 'User password')
+    .option('-t, --type <type>', 'Type of guardian (cloud or gridlock)')
+    .option('-o, --owner', 'Is this the owner guardian')
+    .option('-n, --name <name>', 'Guardian name')
+    .option('-i, --nodeId <nodeId>', 'Guardian node ID')
+    .option('-k, --publicKey <publicKey>', 'Guardian public key')
+    .action(async (options) => {
+    await addGuardianInquire({
+        email: options.email,
+        password: options.password,
+        guardianType: options.type,
+        isOwnerGuardian: options.owner,
+        name: options.name,
+        nodeId: options.nodeId,
+        publicKey: options.publicKey,
     });
 });
 program
@@ -75,24 +96,22 @@ program
     });
 });
 program
-    .command('add-guardian')
-    .description("Add a guardian to a specific user's node pool")
+    .command('verify')
+    .description('Verify a signature')
     .option('-e, --email <email>', 'User email')
-    .option('-p, --password <password>', 'User password')
-    .option('-t, --type <type>', 'Type of guardian (cloud or gridlock)')
-    .option('-o, --owner', 'Is this the owner guardian')
-    .option('-n, --name <name>', 'Guardian name')
-    .option('-i, --nodeId <nodeId>', 'Guardian node ID')
-    .option('-k, --publicKey <publicKey>', 'Guardian public key')
+    .option('-p, --password <password>', 'Network access password')
+    .option('-m, --message <message>', 'Message to be verified')
+    .option('-a, --address <address>', 'Address')
+    .option('-b, --blockchain <blockchain>', 'Blockchain')
+    .option('-s, --signature <signature>', 'Signature to be verified')
     .action(async (options) => {
-    await addGuardianInquire({
+    await verifySignatureInquire({
         email: options.email,
         password: options.password,
-        guardianType: options.type,
-        isOwnerGuardian: options.owner,
-        name: options.name,
-        nodeId: options.nodeId,
-        publicKey: options.publicKey,
+        message: options.message,
+        address: options.address,
+        blockchain: options.blockchain,
+        signature: options.signature,
     });
 });
 // program

@@ -55,7 +55,7 @@ export async function decryptKey({
     return decryptedKey;
   } catch (error) {
     if (error instanceof Error) {
-      console.error('Failed to decrypt key:', error.message);
+      console.error('Failed to decrypt key11111:', error.message);
     } else {
       console.error('Failed to decrypt key:', error);
     }

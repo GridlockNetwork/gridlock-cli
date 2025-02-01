@@ -7,6 +7,7 @@ import { gridlock } from './gridlock.js';
 import { generateE2EKey, encryptKey, generateSigningKey } from './key.service.js';
 import type { IRegisterData } from 'gridlock-sdk/dist/types/user.type.d.ts';
 import inquirer from 'inquirer';
+import { getEmailandPassword } from './auth.service.js';
 
 export const createUserInquire = async (options: {
   name?: string;
@@ -14,15 +15,15 @@ export const createUserInquire = async (options: {
   password?: string;
 }) => {
   let { name, email, password } = options;
-  if (!name || !email || !password) {
-    const answers = await inquirer.prompt([
-      { type: 'input', name: 'name', message: 'User name:' },
-      { type: 'input', name: 'email', message: 'User email:' },
-      { type: 'password', name: 'password', message: 'User password:' },
-    ]);
+  if (!email || !password) {
+    const credentials = await getEmailandPassword();
+    email = credentials.email;
+    password = credentials.password;
+  }
+
+  if (!name) {
+    const answers = await inquirer.prompt([{ type: 'input', name: 'name', message: 'User name:' }]);
     name = answers.name;
-    email = answers.email;
-    password = answers.password;
   }
   await createUser({
     name: name as string,
@@ -30,14 +31,6 @@ export const createUserInquire = async (options: {
     password: password as string,
   });
 };
-
-// ...existing code...
-
-interface CreateUserParams {
-  name: string;
-  email: string;
-  password: string;
-}
 
 /**
  * Creates a new user with the provided name, email, and password.
@@ -48,15 +41,19 @@ interface CreateUserParams {
  * @param {string} params.password - The password for the user's account.
  * @returns {Promise<void>} A promise that resolves when the user is created.
  */
-export const createUser = async ({ name, email, password }: CreateUserParams) => {
+const createUser = async ({
+  name,
+  email,
+  password,
+}: {
+  name: string;
+  email: string;
+  password: string;
+}) => {
   const spinner = ora('Creating user...').start();
-  const registerData = {
-    name: name,
-    email: email.toLowerCase().trim(),
-  };
 
   try {
-    const response = await gridlock.createUser(registerData, password);
+    const response = await gridlock.createUser({ name, email, password });
     const { user } = response;
     spinner.succeed(`➕ Created account for user: ${chalk.hex('#4A90E2').bold(user.name)}`);
   } catch {

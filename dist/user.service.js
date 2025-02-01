@@ -2,17 +2,17 @@ import ora from 'ora';
 import chalk from 'chalk';
 import { gridlock } from './gridlock.js';
 import inquirer from 'inquirer';
+import { getEmailandPassword } from './auth.service.js';
 export const createUserInquire = async (options) => {
     let { name, email, password } = options;
-    if (!name || !email || !password) {
-        const answers = await inquirer.prompt([
-            { type: 'input', name: 'name', message: 'User name:' },
-            { type: 'input', name: 'email', message: 'User email:' },
-            { type: 'password', name: 'password', message: 'User password:' },
-        ]);
+    if (!email || !password) {
+        const credentials = await getEmailandPassword();
+        email = credentials.email;
+        password = credentials.password;
+    }
+    if (!name) {
+        const answers = await inquirer.prompt([{ type: 'input', name: 'name', message: 'User name:' }]);
         name = answers.name;
-        email = answers.email;
-        password = answers.password;
     }
     await createUser({
         name: name,
@@ -29,14 +29,10 @@ export const createUserInquire = async (options) => {
  * @param {string} params.password - The password for the user's account.
  * @returns {Promise<void>} A promise that resolves when the user is created.
  */
-export const createUser = async ({ name, email, password }) => {
+const createUser = async ({ name, email, password, }) => {
     const spinner = ora('Creating user...').start();
-    const registerData = {
-        name: name,
-        email: email.toLowerCase().trim(),
-    };
     try {
-        const response = await gridlock.createUser(registerData, password);
+        const response = await gridlock.createUser({ name, email, password });
         const { user } = response;
         spinner.succeed(`➕ Created account for user: ${chalk.hex('#4A90E2').bold(user.name)}`);
     }

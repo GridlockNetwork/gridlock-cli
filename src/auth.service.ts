@@ -1,43 +1,63 @@
-import ora from 'ora';
-import { loadToken, saveTokens, loadUser, loadKey } from './storage.service.js';
-import { decryptKey } from './key.service.js';
-import { gridlock } from './gridlock.js';
-import { API_KEY, BASE_URL, DEBUG_MODE } from './constants.js';
-import type { AccessAndRefreshTokens } from 'gridlock-sdk/dist/types/auth.type.d.ts';
-import nacl from 'tweetnacl';
-import { loadGuardian } from './storage.service.js';
-import { get } from 'http';
+import inquirer from 'inquirer';
 
-interface UserCredentials {
-  email: string;
-  password: string;
-}
+export const getEmailandPassword = async () => {
+  const answers = await inquirer.prompt([
+    { type: 'input', name: 'email', message: 'User email:' },
+    { type: 'password', name: 'password', message: 'User password:' },
+  ]);
+  return answers;
+};
 
-interface E2EEncryptionParams {
-  recieverPrivKeyIdentifier: string;
-  password: string;
-  message: string;
-  senderPubKey: string;
-}
-export async function decryptmessage({
-  recieverPrivKeyIdentifier,
-  password,
-  message,
-  senderPubKey,
-}: E2EEncryptionParams): Promise<string | null> {
-  const privateKey = recieverPrivKeyIdentifier;
-  const privateKeyBuffer = Buffer.from(privateKey, 'base64');
-  const kp = nacl.box.keyPair.fromSecretKey(privateKeyBuffer).secretKey;
-  const publicKey = Buffer.from(senderPubKey, 'base64');
-  const messageBuffer = Buffer.from(message, 'base64');
-  const nonce = messageBuffer.slice(0, nacl.box.nonceLength);
-  const ciphertext = messageBuffer.slice(nacl.box.nonceLength);
-  const decryptedMessage = nacl.box.open(ciphertext, nonce, publicKey, kp);
+// export const validateEmailandPassword = async ({
+//   email,
+//   password,
+// }: {
+//   email: string;
+//   password: string;
+// }) => {
+//   try {
+//     const user = await loadUser({ email });
+//     if (!user) {
+//       throw new Error('User not found');
+//     }
 
-  if (!decryptedMessage) {
-    console.error('Failed to decrypt message.');
-    return null;
-  }
+//     const encryptedKeyObject = await loadKey({ identifier: email, type: 'public' });
+//     if (!encryptedKeyObject) {
+//       throw new Error('Failed to load user keys');
+//     }
 
-  return Buffer.from(decryptedMessage).toString('utf-8');
-}
+//     const decryptedKey = await decryptKey({ encryptedKeyObject, password });
+//     if (!decryptedKey) {
+//       throw new Error('Failed to decrypt private key');
+//     }
+
+//     return true;
+//   } catch (error) {
+//     console.error('xxxxxxxxxxxxxxxxxxxxx');
+//     throw new Error('Izzzzzzzzzzzzzzzzzzzzzzzzzz');
+//     // return false;
+//   }
+// };
+
+// export async function decryptmessage({
+//   recieverPrivKeyIdentifier,
+//   password,
+//   message,
+//   senderPubKey,
+// }: E2EEncryptionParams): Promise<string | null> {
+//   const privateKey = recieverPrivKeyIdentifier;
+//   const privateKeyBuffer = Buffer.from(privateKey, 'base64');
+//   const kp = nacl.box.keyPair.fromSecretKey(privateKeyBuffer).secretKey;
+//   const publicKey = Buffer.from(senderPubKey, 'base64');
+//   const messageBuffer = Buffer.from(message, 'base64');
+//   const nonce = messageBuffer.slice(0, nacl.box.nonceLength);
+//   const ciphertext = messageBuffer.slice(nacl.box.nonceLength);
+//   const decryptedMessage = nacl.box.open(ciphertext, nonce, publicKey, kp);
+
+//   if (!decryptedMessage) {
+//     console.error('Failed to decrypt message.');
+//     return null;
+//   }
+
+//   return Buffer.from(decryptedMessage).toString('utf-8');
+// }

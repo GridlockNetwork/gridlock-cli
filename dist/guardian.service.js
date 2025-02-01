@@ -1,17 +1,15 @@
 import ora from 'ora';
 import { loadGuardians, saveGuardian } from './storage.service.js';
-import { showAvailableGuardians } from './network.service.js';
+import { allGuardians } from './network.service.js';
 import { gridlock } from './gridlock.js';
 import inquirer from 'inquirer';
+import { getEmailandPassword } from './auth.service.js';
 export const addGuardianInquire = async (options) => {
     let { email, password, guardianType, isOwnerGuardian, name, nodeId, publicKey } = options;
     if (!email || !password) {
-        const answers = await inquirer.prompt([
-            { type: 'input', name: 'email', message: 'User email:' },
-            { type: 'password', name: 'password', message: 'User password:' },
-        ]);
-        email = answers.email;
-        password = answers.password;
+        const credentials = await getEmailandPassword();
+        email = credentials.email;
+        password = credentials.password;
     }
     if (!guardianType) {
         const answers = await inquirer.prompt([
@@ -86,12 +84,12 @@ async function addGridlockGuardian() {
     }
     saveGuardian({ guardian: newGuardian });
     spinner.succeed('Gridlock guardian retrieved and saved successfully');
-    await showAvailableGuardians();
+    await allGuardians();
 }
 async function addCloudGuardian({ email, password, guardian, isOwnerGuardian, }) {
     const spinner = ora('Adding guardian...').start();
     try {
-        const response = await gridlock.addGuardian({ email, password, guardian, isOwnerGuardian });
+        await gridlock.addGuardian({ email, password, guardian, isOwnerGuardian });
         spinner.succeed('Guardian assigned successfully');
     }
     catch {
