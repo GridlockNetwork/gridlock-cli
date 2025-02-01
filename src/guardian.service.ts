@@ -1,10 +1,8 @@
 import ora from 'ora';
-import { loadGuardians, saveGuardian, saveUser } from './storage.service.js';
-import { allGuardians } from './network.service.js';
+import { loadGuardians, saveGuardian } from './storage.service.js';
 import { gridlock } from './gridlock.js';
 import type { IGuardian } from 'gridlock-sdk/dist/types/guardian.type.d.ts';
 import inquirer from 'inquirer';
-import * as user from './user.service.js';
 import { getEmailandPassword } from './auth.service.js';
 
 export const addGuardianInquire = async (options: {
@@ -102,7 +100,6 @@ async function addGridlockGuardian() {
 
   saveGuardian({ guardian: newGuardian });
   spinner.succeed('Gridlock guardian retrieved and saved successfully');
-  await allGuardians();
 }
 
 async function addCloudGuardian({

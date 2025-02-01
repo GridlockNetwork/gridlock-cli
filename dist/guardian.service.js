@@ -1,6 +1,5 @@
 import ora from 'ora';
 import { loadGuardians, saveGuardian } from './storage.service.js';
-import { allGuardians } from './network.service.js';
 import { gridlock } from './gridlock.js';
 import inquirer from 'inquirer';
 import { getEmailandPassword } from './auth.service.js';
@@ -84,7 +83,6 @@ async function addGridlockGuardian() {
     }
     saveGuardian({ guardian: newGuardian });
     spinner.succeed('Gridlock guardian retrieved and saved successfully');
-    await allGuardians();
 }
 async function addCloudGuardian({ email, password, guardian, isOwnerGuardian, }) {
     const spinner = ora('Adding guardian...').start();

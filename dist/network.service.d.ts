@@ -5,4 +5,3 @@ export declare function showNetwork({ email, password }: {
     email: string;
     password: string;
 }): void;
-export declare function allGuardians(): void;

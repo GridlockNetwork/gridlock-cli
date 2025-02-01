@@ -2,10 +2,9 @@ import { program } from 'commander';
 import GridlockSdk from 'gridlock-sdk';
 
 import { API_KEY, BASE_URL, DEBUG_MODE } from './constants.js';
-import { SUPPORTED_COINS } from 'gridlock-sdk';
 import { createUserInquire } from './user.service.js';
 import { addGuardianInquire } from './guardian.service.js';
-import { showNetworkInquire, allGuardians } from './network.service.js';
+import { showNetworkInquire } from './network.service.js';
 import {
   createWalletInquire,
   signTransactionInquire,
@@ -32,11 +31,6 @@ program.hook('preAction', () => {
 program.hook('postAction', () => {
   console.log('\n\n');
 });
-
-program
-  .command('show-available-guardians')
-  .description('Displays the status of all guardians in the network')
-  .action(allGuardians);
 
 program
   .command('show-network')
@@ -131,29 +125,6 @@ program
       signature: options.signature,
     });
   });
-
-// program
-//   .command('test')
-//   .description('Test the encryptContents function')
-//   .option('-i, --email <email>', 'User email')
-//   .option('-p, --password <password>', 'User password')
-//   .option('-m, --message <message>', 'Content to decrypt')
-//   .option('-s, --sender <sender>', 'Public key of the target node')
-//   .action(async (options) => {
-//     if (options.message && options.email && options.password && options.sender) {
-//       const encrypted = await auth.decryptmessage({
-//         recieverPrivKeyIdentifier: options.email,
-//         password: options.password,
-//         message: options.message,
-//         senderPubKey: options.sender,
-//       });
-//       // console.log('Encrypted content:', encrypted);
-//     } else {
-//       console.log(
-//         'Please provide content, email, password, and target public key using the respective options.'
-//       );
-//     }
-//   });
 
 // ---------------- RUN PROGRAM ----------------
 

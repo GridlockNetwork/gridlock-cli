@@ -1,10 +1,7 @@
 import ora from 'ora';
-import { loadUser, saveWallet, loadWallet } from './storage.service.js';
 import { getEmailandPassword } from './auth.service.js';
 
-import { API_KEY, BASE_URL, DEBUG_MODE } from './constants';
 import { gridlock } from './gridlock.js';
-import { generatePasswordBundle } from './key.service.js';
 import inquirer from 'inquirer';
 import { SUPPORTED_COINS } from 'gridlock-sdk';
 import chalk from 'chalk';
