@@ -45,7 +45,7 @@ clear && node dist/gridlock.js create-wallet -e 1@1.com -p password -b solana
 Sign a message for the user.
 
 ```bash
-clear && node dist/gridlock.js sign -e 1@1.com -p password -a 54XsXRCJ8ccrM8nnBvq89RUhg6qu2cDzMgfJeay94rkC -m hello
+clear && node dist/gridlock.js sign -e 1@1.com -p password -a AaNcUWwzQ8ZBZR2nBdADXYqEq5PZo7ashBpmhiDWZ7S8 -m hello
 ```
 
 # Verify signature
@@ -53,7 +53,7 @@ clear && node dist/gridlock.js sign -e 1@1.com -p password -a 54XsXRCJ8ccrM8nnBv
 verify signature
 
 ```bash
-clear && node dist/gridlock.js verify -e 1@1.com -p password -a 84hdoEcAKgEyydnubEbUM7zVDUaYy1PhFxhaXvFSEviM -m hello -b solana -s aece5568dbfe6c7f44c0f40aae581ad3d2ba3ce7c16ab4b11947938fb4e65cd5a6896d335df140b5067aca88ead71ed665cfa532880d7e5add7c3eb357285e00
+clear && node dist/gridlock.js verify -e 1@1.com -p password -a 84hdoEcAKgEyydnubEbUM7zVDUaYy1PhFxhaXvFSEviM -m hello -b solana -s ecce166f0fc01130c7dbd8d7ecc5cdc8f80fdcc3af75789ca609519f6450400cd42fd7732f5677ddf15b6f9c77a3e081d3995ae0085e3e3a3e26cbc746b00406
 ```
 
 # Extra debug functions

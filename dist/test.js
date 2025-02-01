@@ -1,0 +1,35 @@
+// test.ts
+import { execSync } from 'child_process';
+import chalk from 'chalk';
+let walletAddress;
+let signature;
+function runCommand(command) {
+    try {
+        // Capture output as a string.
+        const output = execSync(command, { encoding: 'utf-8' });
+        return output.trim();
+    }
+    catch (error) {
+        console.error(`Error executing command: ${command}`);
+        console.error(error);
+        process.exit(1);
+    }
+}
+const email = '1@1.com';
+const password = 'password';
+const userName = 'Bertram Gilfoyle';
+// Create user (assumes create-user is non-interactive when all options are provided)
+console.log(runCommand(`node dist/gridlock.js create-user -n "${userName}" -e ${email} -p ${password}`));
+// Add guardians (assumed to be non-interactive when all options are provided)
+console.log(runCommand(`node dist/gridlock.js add-guardian -e ${email} -p ${password} -t cloud -n ownerGuardian -i f08f4833-3ce1-4e0b-9de2-96cd969df434 -k s6VTHsJ5uqnFjrFVqerBjgGPcw5zZ2cVdKwj9XEyLUU -o`));
+console.log(runCommand(`node dist/gridlock.js add-guardian -e ${email} -p ${password} -t cloud -n guardian1 -i 40ffd6a1-8191-4bc5-a1ba-ec300c8da1c6 -k 7l9XVjtAax40b7gfbBohR5IgU7D2Polnta/YI0FfplE=`));
+console.log(runCommand(`node dist/gridlock.js add-guardian -e ${email} -p ${password} -t cloud -n guardian2 -i e2bb515f-31e6-4f12-a80d-a4bd8a1215d8 -k Zos8ukwJEL7TFvrtinuV9AQNC2if3rwcb55HJLnpIlQ=`));
+// Create wallet (non-interactive mode: all required options supplied)
+walletAddress = runCommand(`node dist/gridlock.js create-wallet -e ${email} -p ${password} -b solana`);
+console.log(chalk.hex('#800080')(`Wallet Address: ${walletAddress}`));
+const message = 'hello';
+signature = runCommand(`node dist/gridlock.js sign -e ${email} -p ${password} -a ${walletAddress} -m ${message}`);
+console.log(chalk.hex('#800080')(`Signature: ${signature}`));
+const verifyResult = runCommand(`node dist/gridlock.js verify -e ${email} -p ${password} -a ${walletAddress} -m ${message} -b solana -s ${signature}`);
+console.log(chalk.hex('#800080')(`Verify Result: ${verifyResult}`));
+//# sourceMappingURL=test.js.map
