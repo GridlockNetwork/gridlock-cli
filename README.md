@@ -11,22 +11,18 @@ CLI for quick actions: user creation, wallet creation, wallet actions (sign mess
 
 1. **Run partner guardians:**
 
-```sh
-   docker run --name partner-nodes-1 -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
-```
-
-```sh
-   docker run --name partner-nodes-2 -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
+```bash
+docker run --name owner-guardian -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
+docker run --name guardian1 -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
+docker run --name guardian2 -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
 ```
 
 or start and folow the logs of an existing container
 
 ```sh
-docker start partner-nodes-1 && docker logs -f partner-nodes-1
-```
-
-```sh
-docker start partner-nodes-2 && docker logs -f partner-nodes-2
+docker start owner-guardian && docker logs -f partner-nodes-1
+docker start guardian-1 && docker logs -f partner-nodes-1
+docker start guardian-1 && docker logs -f partner-nodes-1
 ```
 
 2. **Grab the public key and nodeId from the docker logs for both partner guardians and add them to the server:**

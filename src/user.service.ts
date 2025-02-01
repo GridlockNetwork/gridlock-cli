@@ -1,11 +1,7 @@
 import ora from 'ora';
-import { saveTokens, saveUser, saveKey } from './storage.service.js';
-import { API_KEY, BASE_URL, DEBUG_MODE } from './constants';
 import chalk from 'chalk';
 
 import { gridlock } from './gridlock.js';
-import { generateE2EKey, encryptKey, generateSigningKey } from './key.service.js';
-import type { IRegisterData } from 'gridlock-sdk/dist/types/user.type.d.ts';
 import inquirer from 'inquirer';
 import { getEmailandPassword } from './auth.service.js';
 
