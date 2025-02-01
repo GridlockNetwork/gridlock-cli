@@ -1,10 +1,18 @@
 import chalk from 'chalk';
 
-export const green = (...args) => chalk.green(...args);
-export const red = (...args) => chalk.red(...args);
+export const green = (...args: any[]) => chalk.green(...args);
+export const red = (...args: any[]) => chalk.red(...args);
 
-export const prettyLog = (data, options = { space: false, onlyValues: false }) => {
-  const format = (item, depth = 0) => {
+interface PrettyLogOptions {
+  space?: boolean;
+  onlyValues?: boolean;
+}
+
+export const prettyLog = (
+  data: any,
+  options: PrettyLogOptions = { space: false, onlyValues: false }
+) => {
+  const format = (item: any, depth: number = 0) => {
     const indent = '  '.repeat(depth); // Indentation for nested levels
     if (Array.isArray(item)) {
       console.log(`${indent}${green('[')}`);
