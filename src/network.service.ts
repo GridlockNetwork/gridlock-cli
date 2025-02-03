@@ -33,7 +33,7 @@ export function showNetwork({ email, password }: { email: string; password: stri
   }
 
   const guardians = user.nodePool || [];
-  const ownerGuardianNodeId = user.ownerGuardian;
+  const ownerGuardianNodeId = user.ownerGuardian as unknown as string;
 
   spinner.succeed('User guardians retrieved successfully');
   console.log(
@@ -58,7 +58,7 @@ export function showNetwork({ email, password }: { email: string; password: stri
 
     guardians.forEach((guardian, index) => {
       const emoji = emojiMap[guardian.type] || '';
-      const crown = ownerGuardianNodeId
+      ownerGuardianNodeId == guardian.nodeId
         ? console.log(`    👑 ${chalk.bold('Name:')} ${guardian.name}`)
         : console.log(`       ${chalk.bold('Name:')} ${guardian.name}`);
       console.log(

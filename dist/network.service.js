@@ -46,7 +46,7 @@ export function showNetwork({ email, password }) {
         };
         guardians.forEach((guardian, index) => {
             const emoji = emojiMap[guardian.type] || '';
-            const crown = ownerGuardianNodeId
+            ownerGuardianNodeId == guardian.nodeId
                 ? console.log(`    👑 ${chalk.bold('Name:')} ${guardian.name}`)
                 : console.log(`       ${chalk.bold('Name:')} ${guardian.name}`);
             console.log(`       ${chalk.bold('Type:')} ${emoji} ${Object.keys(guardianTypeMap).find((key) => guardianTypeMap[key] === guardian.type)}`);

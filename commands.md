@@ -24,12 +24,15 @@ clear && node dist/gridlock.js create-user -n "Bertram Gilfoyle" -e 1@1.com -p p
 
 # Add a guardian to a user
 
-This function adds a guardian to the user. First add a guardian and label it the owner guardian, then add two more.
+This function adds guardian to the user object.
+First add a custom cloud guardian labelded as the owner guardian.
+Then add another cloud guardian.
+Then add a gridlock guarian.
 
 ```bash
 clear && node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n ownerGuardian -i f08f4833-3ce1-4e0b-9de2-96cd969df434 -k s6VTHsJ5uqnFjrFVqerBjgGPcw5zZ2cVdKwj9XEyLUU -o
 node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n guardian1 -i 40ffd6a1-8191-4bc5-a1ba-ec300c8da1c6 -k 7l9XVjtAax40b7gfbBohR5IgU7D2Polnta/YI0FfplE=
-node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n guardian2 -i e2bb515f-31e6-4f12-a80d-a4bd8a1215d8 -k Zos8ukwJEL7TFvrtinuV9AQNC2if3rwcb55HJLnpIlQ=
+node dist/gridlock.js add-guardian -e 1@1.com -p password -t gridlock
 ```
 
 # Create a wallet
@@ -45,7 +48,7 @@ clear && node dist/gridlock.js create-wallet -e 1@1.com -p password -b solana
 Sign a message for the user.
 
 ```bash
-clear && node dist/gridlock.js sign -e 1@1.com -p password -a 54XsXRCJ8ccrM8nnBvq89RUhg6qu2cDzMgfJeay94rkC -m hello
+clear && node dist/gridlock.js sign -e 1@1.com -p password -a AaNcUWwzQ8ZBZR2nBdADXYqEq5PZo7ashBpmhiDWZ7S8 -m hello
 ```
 
 # Verify signature
@@ -53,7 +56,7 @@ clear && node dist/gridlock.js sign -e 1@1.com -p password -a 54XsXRCJ8ccrM8nnBv
 verify signature
 
 ```bash
-clear && node dist/gridlock.js verify -e 1@1.com -p password -a 84hdoEcAKgEyydnubEbUM7zVDUaYy1PhFxhaXvFSEviM -m hello -b solana -s aece5568dbfe6c7f44c0f40aae581ad3d2ba3ce7c16ab4b11947938fb4e65cd5a6896d335df140b5067aca88ead71ed665cfa532880d7e5add7c3eb357285e00
+clear && node dist/gridlock.js verify -e 1@1.com -p password -a 84hdoEcAKgEyydnubEbUM7zVDUaYy1PhFxhaXvFSEviM -m hello -b solana -s ecce166f0fc01130c7dbd8d7ecc5cdc8f80fdcc3af75789ca609519f6450400cd42fd7732f5677ddf15b6f9c77a3e081d3995ae0085e3e3a3e26cbc746b00406
 ```
 
 # Extra debug functions

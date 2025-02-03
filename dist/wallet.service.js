@@ -3,7 +3,6 @@ import { getEmailandPassword } from './auth.service.js';
 import { gridlock } from './gridlock.js';
 import inquirer from 'inquirer';
 import { SUPPORTED_COINS } from 'gridlock-sdk';
-import chalk from 'chalk';
 export const createWalletInquire = async (options) => {
     let { email, password, blockchain } = options;
     if (!email || !password || !blockchain) {
@@ -71,10 +70,9 @@ async function createWallet({ email, password, blockchain, }) {
     const spinner = ora('Creating wallet...').start();
     try {
         const wallet = await gridlock.createWallet(email, password, blockchain);
-        const properChainTitle = blockchain.charAt(0).toUpperCase() + blockchain.slice(1);
-        spinner.succeed(`➕ Created ${properChainTitle} wallet:\nWallet address: ${chalk
-            .hex('#4A90E2')
-            .bold(wallet.address)}`);
+        const blockchainCapitalized = blockchain.charAt(0).toUpperCase() + blockchain.slice(1);
+        spinner.succeed(`➕ Created ${blockchainCapitalized} wallet with address:`);
+        console.log(wallet?.address); //logging the address of the wallet as standalone to help with automated testing
     }
     catch {
         spinner.fail(`Failed to create wallet`);
@@ -90,7 +88,8 @@ async function signTransaction({ email, password, address, message, }) {
             message: message,
         });
         const signature = response.signature;
-        spinner.succeed(`Transaction signed successfully:\nSignature: ${chalk.hex('#4A90E2').bold(signature)}`);
+        spinner.succeed(`Transaction signed successfully with signature:`);
+        console.log(signature); //logging the signature as standalone to help with automated testing
     }
     catch {
         spinner.fail(`Failed to sign transaction`);
@@ -108,9 +107,8 @@ async function verifySignature({ email, password, message, address, blockchain, 
             signature,
         });
         if ((response.verified = true)) {
-            spinner.succeed(`Signature verified successfully:\nResponse: ${chalk
-                .hex('#4A90E2')
-                .bold(response.verified)}`);
+            spinner.succeed(`Signature verified successfully:`);
+            console.log(response.verified); //logging the response as standalone to help with automated testing
         }
         else {
             spinner.fail(`Failed to verify signature`);
