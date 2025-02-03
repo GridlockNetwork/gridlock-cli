@@ -145,4 +145,26 @@ program
     }
   });
 
+program
+  .command('login')
+  .description('Login with email and password')
+  .option('-e, --email <email>', 'User email')
+  .option('-p, --password <password>', 'User password')
+  .action(async (options) => {
+    if (options.email && options.password) {
+      try {
+        const response = await gridlock.login(options.email, options.password);
+        console.log('Login successful:', response);
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error('Login failed:', error.message);
+        } else {
+          console.error('Login failed:', error);
+        }
+      }
+    } else {
+      console.log('Please provide both email and password using the respective options.');
+    }
+  });
+
 program.parseAsync(process.argv);
