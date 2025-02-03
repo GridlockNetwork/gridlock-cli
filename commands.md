@@ -24,12 +24,15 @@ clear && node dist/gridlock.js create-user -n "Bertram Gilfoyle" -e 1@1.com -p p
 
 # Add a guardian to a user
 
-This function adds a guardian to the user. First add a guardian and label it the owner guardian, then add two more.
+This function adds guardian to the user object.
+First add a custom cloud guardian labelded as the owner guardian.
+Then add another cloud guardian.
+Then add a gridlock guarian.
 
 ```bash
 clear && node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n ownerGuardian -i f08f4833-3ce1-4e0b-9de2-96cd969df434 -k s6VTHsJ5uqnFjrFVqerBjgGPcw5zZ2cVdKwj9XEyLUU -o
 node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n guardian1 -i 40ffd6a1-8191-4bc5-a1ba-ec300c8da1c6 -k 7l9XVjtAax40b7gfbBohR5IgU7D2Polnta/YI0FfplE=
-node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n guardian2 -i e2bb515f-31e6-4f12-a80d-a4bd8a1215d8 -k Zos8ukwJEL7TFvrtinuV9AQNC2if3rwcb55HJLnpIlQ=
+node dist/gridlock.js add-guardian -e 1@1.com -p password -t gridlock
 ```
 
 # Create a wallet

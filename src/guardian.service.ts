@@ -4,6 +4,7 @@ import { gridlock } from './gridlock.js';
 import type { IGuardian } from 'gridlock-sdk/dist/types/guardian.type.d.ts';
 import inquirer from 'inquirer';
 import { getEmailandPassword } from './auth.service.js';
+import chalk from 'chalk';
 
 export const addGuardianInquire = async (options: {
   email?: string;
@@ -37,7 +38,7 @@ export const addGuardianInquire = async (options: {
     guardianType = answers.guardianType;
   }
   if (guardianType === 'gridlock') {
-    await addGridlockGuardian();
+    addGridlockGuardian({ email: email as string, password: password as string });
   } else if (guardianType === 'cloud') {
     if (!name || !nodeId || !publicKey) {
       const answers = await inquirer.prompt([
@@ -79,27 +80,19 @@ export const addGuardianInquire = async (options: {
   }
 };
 
-async function addGridlockGuardian() {
-  const spinner = ora('Retrieving Gridlock guardian...').start();
-  const gridlockGuardians = await gridlock.getGridlockGuardians();
-  if (!gridlockGuardians) {
-    spinner.fail('Failed to retrieve Gridlock guardians');
-    return;
+async function addGridlockGuardian({ email, password }: { email: string; password: string }) {
+  const spinner = ora('Adding Gridlock guardian...').start();
+
+  try {
+    const guardian = await gridlock.addGridlockGuardian({ email, password });
+    if (guardian) {
+      spinner.succeed(
+        `Added ${chalk.hex('#4A90E2').bold(guardian.name)} to user's list of guardians`
+      );
+    }
+  } catch {
+    spinner.fail(`Failed to add guardian`);
   }
-
-  const existingGuardians = loadGuardians();
-  const existingGuardianIds = existingGuardians.map((g) => g.nodeId);
-
-  const newGuardian = Array.isArray(gridlockGuardians)
-    ? gridlockGuardians.find((g) => !existingGuardianIds.includes(g.nodeId))
-    : null;
-  if (!newGuardian) {
-    spinner.fail('No new Gridlock guardian available to add');
-    return;
-  }
-
-  saveGuardian({ guardian: newGuardian });
-  spinner.succeed('Gridlock guardian retrieved and saved successfully');
 }
 
 async function addCloudGuardian({

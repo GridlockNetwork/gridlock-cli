@@ -37,11 +37,7 @@ console.log(
     `node dist/gridlock.js add-guardian -e ${email} -p ${password} -t cloud -n guardian1 -i 40ffd6a1-8191-4bc5-a1ba-ec300c8da1c6 -k 7l9XVjtAax40b7gfbBohR5IgU7D2Polnta/YI0FfplE=`
   )
 );
-console.log(
-  runCommand(
-    `node dist/gridlock.js add-guardian -e ${email} -p ${password} -t cloud -n guardian2 -i e2bb515f-31e6-4f12-a80d-a4bd8a1215d8 -k Zos8ukwJEL7TFvrtinuV9AQNC2if3rwcb55HJLnpIlQ=`
-  )
-);
+console.log(runCommand(`node dist/gridlock.js add-guardian -e 1@1.com -p password -t gridlock`));
 
 // Create wallet (non-interactive mode: all required options supplied)
 walletAddress = runCommand(
