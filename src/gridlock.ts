@@ -2,7 +2,7 @@ import { program } from 'commander';
 import GridlockSdk from 'gridlock-sdk';
 
 import { API_KEY, BASE_URL, DEBUG_MODE } from './constants.js';
-import { createUserInquire } from './user.service.js';
+import { createUserInquire, recoverInquire } from './user.service.js';
 import { addGuardianInquire } from './guardian.service.js';
 import { showNetworkInquire } from './network.service.js';
 import {
@@ -124,6 +124,15 @@ program
       blockchain: options.blockchain,
       signature: options.signature,
     });
+  });
+
+program
+  .command('recover')
+  .description('Recover account using email')
+  .option('-e, --email <email>', 'User email')
+  .option('-p, --password <password>', 'User password')
+  .action(async (options) => {
+    await recoverInquire({ email: options.email, password: options.password });
   });
 
 // ---------------- RUN PROGRAM ----------------

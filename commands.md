@@ -93,3 +93,6 @@ node dist/gridlock-utils.js e2e-receive -p "Oc860iPn+GjHXiemYBc/uqtvorlyNyTqYKfu
 //local
 
 private = sA8/5/hr904Yl8Pp8L8hs7UNBgdC7YYHTvo8zUDFifA=
+
+
+clear && node dist/gridlock.js recover -e 2@2.com -p mypass

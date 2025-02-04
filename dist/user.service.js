@@ -40,4 +40,35 @@ const createUser = async ({ name, email, password, }) => {
         spinner.fail('Failed to create user');
     }
 };
+export const recoverInquire = async ({ email, password, }) => {
+    if (!email) {
+        const answers = await inquirer.prompt([
+            { type: 'input', name: 'email', message: 'Enter your email:' },
+        ]);
+        email = answers.email;
+    }
+    if (!password) {
+        const answers = await inquirer.prompt([
+            {
+                type: 'password',
+                name: 'password',
+                message: 'Enter password to encrypt data if recovery works:',
+            },
+        ]);
+        password = answers.password;
+    }
+    return await recover({ email: email, password: password });
+};
+export const recover = async ({ email, password, }) => {
+    const spinner = ora('Starting recovery...').start();
+    try {
+        const result = await gridlock.recover({ email, password });
+        spinner.succeed('Recovery initiated');
+        return result;
+    }
+    catch (error) {
+        spinner.fail('Recovery failed');
+        throw error;
+    }
+};
 //# sourceMappingURL=user.service.js.map
