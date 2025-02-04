@@ -35,6 +35,15 @@ node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n guardian1 
 node dist/gridlock.js add-guardian -e 1@1.com -p password -t gridlock
 ```
 
+add rust testing code
+
+```bash
+clear && node dist/gridlock.js create-user -n "Bertram Gilfoyle" -e 1@1.com -p password
+node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n ownerGuardian -i f08f4833-3ce1-4e0b-9de2-96cd969df434 -k s6VTHsJ5uqnFjrFVqerBjgGPcw5zZ2cVdKwj9XEyLUU -o
+node dist/gridlock.js add-guardian -e 1@1.com -p password -t cloud -n guardian1 -i dbf6ea5f-82a4-4c40-9aec-5b83a6fb6b78 -k "DUamBveqELmPiuQzXsntwrvNrlJ1HITDnBo2V1w94A0="
+
+```
+
 # Create a wallet
 
 Create a wallet for a user.
@@ -70,5 +79,17 @@ clear && node dist/gridlock.js show-network -e 1@1.com
 ```
 
 ```bash
-clear && node dist/gridlock-utils.js test -i "vYtCNyzl0+ScCGICSci/+/sBPGOfgi9wGBId3CkPQKk=" -p password -m "y8PHxBAzYSaaOLK2cvwag51xmtR+4JCR5H8UVYrtqwnxrW1BdnOFXTstYzH5m0A8ptG/NAe7C/bmNAyaySsm0ybjnB10OPTBLSzKm1qgnf+35zCC'" -s "ImoxPRAF6qAmeS38suP1hYxsoR09YK+UN4hlptPVqUk="
+node dist/gridlock-utils.js e2e-send -e 1@1.com -p password -m "this is my message" -t "uIaPp2B+SR49nFshtaq6AdH8GIo416tjaMIPSgW5eEU="
 ```
+
+```bash
+node dist/gridlock-utils.js e2e-receive -p "Oc860iPn+GjHXiemYBc/uqtvorlyNyTqYKfuhoZn7gI=" -s "ImoxPRAF6qAmeS38suP1hYxsoR09YK+UN4hlptPVqUk=" -m "FOmuwcKOD9XpcSpJUsN5YVTOZYfOiM2Ex2P9ZR5xTst/ERIXSA1gdMAYMk3IHah64qAC2PzAosGNgQ=="
+```
+
+//guardian
+"e2e_public": "DUamBveqELmPiuQzXsntwrvNrlJ1HITDnBo2V1w94A0=",
+"e2e_private": "6zXAHwbmO+I3Qz998H/PZ6EhgV+s53RHNzHSjkTuWe8="
+
+//local
+
+private = sA8/5/hr904Yl8Pp8L8hs7UNBgdC7YYHTvo8zUDFifA=

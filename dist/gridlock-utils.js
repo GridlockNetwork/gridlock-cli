@@ -68,8 +68,7 @@ export function allGuardians() {
     console.log('-----------------------------------');
     return;
 }
-export async function e2eProcessing({ recieverPrivKeyIdentifier, password, message, senderPubKey, }) {
-    const privateKey = recieverPrivKeyIdentifier;
+export async function e2eProcessing({ privateKey, message, senderPubKey, }) {
     const privateKeyBuffer = Buffer.from(privateKey, 'base64');
     const kp = nacl.box.keyPair.fromSecretKey(privateKeyBuffer).secretKey;
     const publicKey = Buffer.from(senderPubKey, 'base64');
@@ -88,24 +87,53 @@ program
     .description('Displays the status of all guardians in the network')
     .action(allGuardians);
 program
-    .command('test')
+    .command('e2e-receive')
     .description('Test the encryptContents function')
-    .option('-i, --email <email>', 'User email')
-    .option('-p, --password <password>', 'User password')
+    .option('-p, --privateKey <privateKey>', 'privateKey')
     .option('-m, --message <message>', 'Content to decrypt')
     .option('-s, --sender <sender>', 'Public key of the target node')
     .action(async (options) => {
-    if (options.message && options.email && options.password && options.sender) {
+    if (options.message && options.privateKey && options.sender) {
         const encrypted = await e2eProcessing({
-            recieverPrivKeyIdentifier: options.email,
-            password: options.password,
+            privateKey: options.privateKey,
             message: options.message,
             senderPubKey: options.sender,
         });
-        // console.log('Encrypted content:', encrypted);
+        console.log('Encrypted content:', encrypted);
     }
     else {
         console.log('Please provide content, email, password, and target public key using the respective options.');
+    }
+});
+program
+    .command('e2e-send')
+    .description("Encrypt content with the user's private key and target's public key")
+    .option('-e, --email <email>', 'User email')
+    .option('-p, --password <password>', 'User password')
+    .option('-t, --target <target>', 'Target public key')
+    .option('-m, --message <message>', 'Content to encrypt')
+    .action(async (options) => {
+    if (options.email && options.password && options.target && options.message) {
+        try {
+            const encryptedContent = await gridlock.encryptContents({
+                content: options.message,
+                publicKey: options.target,
+                identifier: options.email,
+                password: options.password,
+            });
+            console.log('Encrypted content:', encryptedContent);
+        }
+        catch (error) {
+            if (error instanceof Error) {
+                console.error('Encryption failed:', error.message);
+            }
+            else {
+                console.error('Encryption failed:', error);
+            }
+        }
+    }
+    else {
+        console.log('Please provide email, password, target public key, and message using the respective options.');
     }
 });
 program
