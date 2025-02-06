@@ -180,7 +180,7 @@ program
     if (options.email && options.password) {
       try {
         const response = await gridlock.login(options.email, options.password);
-        console.log('Login successful:', response);
+        console.log('Login successful');
       } catch (error) {
         if (error instanceof Error) {
           console.error('Login failed:', error.message);
