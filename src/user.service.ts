@@ -3,7 +3,6 @@ import chalk from 'chalk';
 
 import { gridlock } from './gridlock.js';
 import inquirer from 'inquirer';
-import { getEmailandPassword } from './auth.service.js';
 
 export const createUserInquire = async (options: {
   name?: string;
@@ -11,12 +10,24 @@ export const createUserInquire = async (options: {
   password?: string;
 }) => {
   let { name, email, password } = options;
-  if (!email || !password) {
-    const credentials = await getEmailandPassword();
-    email = credentials.email;
-    password = credentials.password;
-  }
 
+  console.log('Entered values:');
+  if (name) console.log(`User name: ${chalk.hex('#4A90E2')(name)}`);
+  if (email) console.log(`Email: ${chalk.hex('#4A90E2')(email)}`);
+  if (password) console.log(`Password: ${chalk.hex('#4A90E2')('*******')}`);
+
+  if (!email) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'email', message: 'Enter your email:' },
+    ]);
+    email = answers.email;
+  }
+  if (!password) {
+    const answers = await inquirer.prompt([
+      { type: 'password', name: 'password', message: 'Enter your password:' },
+    ]);
+    password = answers.password;
+  }
   if (!name) {
     const answers = await inquirer.prompt([{ type: 'input', name: 'name', message: 'User name:' }]);
     name = answers.name;
@@ -64,6 +75,10 @@ export const recoverInquire = async ({
   email?: string;
   password?: string;
 }): Promise<any> => {
+  console.log('Entered values:');
+  if (email) console.log(`Email: ${chalk.hex('#4A90E2')(email)}`);
+  if (password) console.log(`Password: ${chalk.hex('#4A90E2')('*******')}`);
+
   if (!email) {
     const answers = await inquirer.prompt([
       { type: 'input', name: 'email', message: 'Enter your email:' },

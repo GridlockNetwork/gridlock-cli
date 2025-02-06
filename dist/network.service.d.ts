@@ -1,7 +1,6 @@
 export declare const showNetworkInquire: ({ email }: {
-    email: string;
+    email?: string;
 }) => Promise<void>;
-export declare function showNetwork({ email, password }: {
+export declare function showNetwork({ email }: {
     email: string;
-    password: string;
 }): void;

@@ -1,30 +1,43 @@
 import ora from 'ora';
-import { loadGuardians, saveGuardian } from './storage.service.js';
 import { gridlock } from './gridlock.js';
 import type { IGuardian } from 'gridlock-sdk/dist/types/guardian.type.d.ts';
 import inquirer from 'inquirer';
-import { getEmailandPassword } from './auth.service.js';
 import chalk from 'chalk';
 
 export const addGuardianInquire = async (options: {
   email?: string;
   password?: string;
-  guardianType?: string;
-  isOwnerGuardian?: boolean;
-  name?: string;
   nodeId?: string;
+  name?: string;
+  guardianType?: string;
   publicKey?: string;
+  isOwnerGuardian?: string;
 }) => {
-  let { email, password, guardianType, isOwnerGuardian, name, nodeId, publicKey } = options;
+  let { email, password, nodeId, name, guardianType, publicKey, isOwnerGuardian } = options;
 
-  if (!email || !password) {
-    const credentials = await getEmailandPassword();
-    email = credentials.email;
-    password = credentials.password;
+  console.log('Entered values:');
+  if (email) console.log(`Email: ${chalk.hex('#4A90E2')(email)}`);
+  if (password) console.log(`Password: ${chalk.hex('#4A90E2')('*******')}`);
+  if (nodeId) console.log(`Node ID: ${chalk.hex('#4A90E2')(nodeId)}`);
+  if (name) console.log(`Name: ${chalk.hex('#4A90E2')(name)}`);
+  if (guardianType) console.log(`Guardian Type: ${chalk.hex('#4A90E2')(guardianType)}`);
+  if (publicKey) console.log(`Public Key: ${chalk.hex('#4A90E2')(publicKey)}`);
+  if (isOwnerGuardian) console.log(`Owner Guardian: ${chalk.hex('#4A90E2')(isOwnerGuardian)}`);
+
+  if (!email) {
+    const answer = await inquirer.prompt([
+      { type: 'input', name: 'email', message: 'Enter your email:' },
+    ]);
+    email = answer.email;
   }
-
+  if (!password) {
+    const answer = await inquirer.prompt([
+      { type: 'password', name: 'password', message: 'Enter your password:' },
+    ]);
+    password = answer.password;
+  }
   if (!guardianType) {
-    const answers = await inquirer.prompt([
+    const answer = await inquirer.prompt([
       {
         type: 'list',
         name: 'guardianType',
@@ -32,19 +45,35 @@ export const addGuardianInquire = async (options: {
         choices: [
           { name: 'Gridlock Guardian', value: 'gridlock' },
           { name: 'Cloud Guardian', value: 'cloud' },
+          { name: 'Social Guardian', value: 'social' },
         ],
       },
     ]);
-    guardianType = answers.guardianType;
+    guardianType = answer.guardianType;
   }
   if (guardianType === 'gridlock') {
     addGridlockGuardian({ email: email as string, password: password as string });
   } else if (guardianType === 'cloud') {
-    if (!name || !nodeId || !publicKey) {
-      const answers = await inquirer.prompt([
+    if (!name) {
+      const answer = await inquirer.prompt([
         { type: 'input', name: 'name', message: 'Guardian name:' },
+      ]);
+      name = answer.name as string;
+    }
+    if (!nodeId) {
+      const answer = await inquirer.prompt([
         { type: 'input', name: 'nodeId', message: 'Node ID:' },
+      ]);
+      nodeId = answer.nodeId as string;
+    }
+    if (!publicKey) {
+      const answer = await inquirer.prompt([
         { type: 'input', name: 'publicKey', message: 'Guardian public key:' },
+      ]);
+      publicKey = answer.publicKey as string;
+    }
+    if (isOwnerGuardian === undefined) {
+      const answer = await inquirer.prompt([
         {
           type: 'confirm',
           name: 'isOwnerGuardian',
@@ -52,17 +81,14 @@ export const addGuardianInquire = async (options: {
           default: false,
         },
       ]);
-      name = answers.name;
-      nodeId = answers.nodeId;
-      publicKey = answers.publicKey;
-      isOwnerGuardian = answers.isOwnerGuardian;
+      isOwnerGuardian = answer.isOwnerGuardian as string;
     }
 
     const guardianData = {
       name: name!,
       nodeId: nodeId!,
       publicKey: publicKey!,
-      type: 'cloudGuardian',
+      type: 'cloudGuardian' as 'cloudGuardian',
       active: true,
     };
 
@@ -73,10 +99,11 @@ export const addGuardianInquire = async (options: {
       isOwnerGuardian: isOwnerGuardian!,
     };
 
-    // @ts-ignore - the use of inquirer ensures that variables cannot be null
     await addCloudGuardian(addGuardianParams);
+  } else if (guardianType === 'social') {
+    await addSocialGuardian({ email: email as string, password: password as string });
   } else {
-    console.error('Invalid guardian type. Please specify "gridlock" or "cloud".');
+    console.error('Invalid guardian type. Please specify "gridlock", "cloud", or "social".');
   }
 };
 
@@ -104,7 +131,7 @@ async function addCloudGuardian({
   email: string;
   password: string;
   guardian: IGuardian;
-  isOwnerGuardian: boolean;
+  isOwnerGuardian: string;
 }) {
   const spinner = ora('Adding guardian...').start();
 
@@ -113,5 +140,17 @@ async function addCloudGuardian({
     spinner.succeed('Guardian assigned successfully');
   } catch {
     spinner.fail(`Failed to assign guardian`);
+  }
+}
+
+async function addSocialGuardian({ email, password }: { email: string; password: string }) {
+  const spinner = ora('Adding Social guardian...').start();
+  try {
+    const socialGuardian = await gridlock.addSocialGuardian({ email, password });
+    spinner.succeed('Social guardian added successfully');
+    console.log('Scan the following QR code to complete setup:');
+    const exampleContent = 'https://example.com/social-guardian?data=1234';
+  } catch (error) {
+    spinner.fail('Failed to add social guardian');
   }
 }

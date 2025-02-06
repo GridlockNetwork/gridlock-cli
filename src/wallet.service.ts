@@ -1,6 +1,4 @@
 import ora from 'ora';
-import { getEmailandPassword } from './auth.service.js';
-
 import { gridlock } from './gridlock.js';
 import inquirer from 'inquirer';
 import { SUPPORTED_COINS } from 'gridlock-sdk';
@@ -12,20 +10,30 @@ export const createWalletInquire = async (options: {
   blockchain?: string;
 }) => {
   let { email, password, blockchain } = options;
-  if (!email || !password || !blockchain) {
-    const credentials = await getEmailandPassword();
-    email = credentials.email;
-    password = credentials.password;
+  console.log('Entered values:');
+  if (email) console.log(`Email: ${chalk.hex('#4A90E2')(email)}`);
+  if (password) console.log(`Password: ${chalk.hex('#4A90E2')('*******')}`);
+  if (blockchain) console.log(`Blockchain: ${chalk.hex('#4A90E2')(blockchain)}`);
+
+  if (!email) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'email', message: 'Enter your email:' },
+    ]);
+    email = answers.email as string;
+  }
+  if (!password) {
+    const answers = await inquirer.prompt([
+      { type: 'password', name: 'password', message: 'Enter your password:' },
+    ]);
+    password = answers.password as string;
+  }
+  if (!blockchain) {
     const answers = await inquirer.prompt([
       { type: 'list', name: 'blockchain', message: 'Select blockchain:', choices: SUPPORTED_COINS },
     ]);
-    blockchain = answers.blockchain;
+    blockchain = answers.blockchain as string;
   }
-  await createWallet({
-    email: email as string,
-    password: password as string,
-    blockchain: blockchain as string,
-  });
+  await createWallet({ email, password, blockchain });
 };
 
 export const signTransactionInquire = async (options: {
@@ -35,23 +43,37 @@ export const signTransactionInquire = async (options: {
   message?: string;
 }) => {
   let { email, password, address, message } = options;
-  if (!email || !password || !address || !message) {
-    const credentials = await getEmailandPassword();
-    email = credentials.email;
-    password = credentials.password;
+  console.log('Entered values:');
+  if (email) console.log(`Email: ${chalk.hex('#4A90E2')(email)}`);
+  if (password) console.log(`Password: ${chalk.hex('#4A90E2')('*******')}`);
+  if (address) console.log(`Address: ${chalk.hex('#4A90E2')(address)}`);
+  if (message) console.log(`Message: ${chalk.hex('#4A90E2')(message)}`);
+
+  if (!email) {
     const answers = await inquirer.prompt([
-      { type: 'input', name: 'address', message: 'Select address:' },
+      { type: 'input', name: 'email', message: 'Enter your email:' },
+    ]);
+    email = answers.email as string;
+  }
+  if (!password) {
+    const answers = await inquirer.prompt([
+      { type: 'password', name: 'password', message: 'Enter your password:' },
+    ]);
+    password = answers.password as string;
+  }
+  if (!address) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'address', message: 'Enter the address:' },
+    ]);
+    address = answers.address as string;
+  }
+  if (!message) {
+    const answers = await inquirer.prompt([
       { type: 'input', name: 'message', message: 'Message to be signed:' },
     ]);
-    address = answers.address;
-    message = answers.message;
+    message = answers.message as string;
   }
-  await signTransaction({
-    email: email as string,
-    password: password as string,
-    address: address as string,
-    message: message as string,
-  });
+  await signTransaction({ email, password, address, message });
 };
 
 export const verifySignatureInquire = async (options: {
@@ -63,29 +85,51 @@ export const verifySignatureInquire = async (options: {
   signature?: string;
 }) => {
   let { email, password, message, address, blockchain, signature } = options;
-  if (!email || !password || !message || !address || !blockchain || !signature) {
-    const credentials = await getEmailandPassword();
-    email = credentials.email;
-    password = credentials.password;
+  console.log('Entered values:');
+  if (email) console.log(`Email: ${chalk.hex('#4A90E2')(email)}`);
+  if (password) console.log(`Password: ${chalk.hex('#4A90E2')('*******')}`);
+  if (message) console.log(`Message: ${chalk.hex('#4A90E2')(message)}`);
+  if (address) console.log(`Address: ${chalk.hex('#4A90E2')(address)}`);
+  if (blockchain) console.log(`Blockchain: ${chalk.hex('#4A90E2')(blockchain)}`);
+  if (signature) console.log(`Signature: ${chalk.hex('#4A90E2')(signature)}`);
+
+  if (!email) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'email', message: 'Enter your email:' },
+    ]);
+    email = answers.email as string;
+  }
+  if (!password) {
+    const answers = await inquirer.prompt([
+      { type: 'password', name: 'password', message: 'Enter your password:' },
+    ]);
+    password = answers.password as string;
+  }
+  if (!message) {
     const answers = await inquirer.prompt([
       { type: 'input', name: 'message', message: 'Message to be verified:' },
-      { type: 'input', name: 'address', message: 'Address:' },
-      { type: 'list', name: 'blockchain', message: 'Select blockchain:', choices: SUPPORTED_COINS },
-      { type: 'input', name: 'signature', message: 'Signature:' },
     ]);
-    message = answers.message;
-    address = answers.address;
-    blockchain = answers.blockchain;
-    signature = answers.signature;
+    message = answers.message as string;
   }
-  await verifySignature({
-    email: email as string,
-    password: password as string,
-    message: message as string,
-    address: address as string,
-    blockchain: blockchain as string,
-    signature: signature as string,
-  });
+  if (!address) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'address', message: 'Enter the address:' },
+    ]);
+    address = answers.address as string;
+  }
+  if (!blockchain) {
+    const answers = await inquirer.prompt([
+      { type: 'list', name: 'blockchain', message: 'Select blockchain:', choices: SUPPORTED_COINS },
+    ]);
+    blockchain = answers.blockchain as string;
+  }
+  if (!signature) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'signature', message: 'Enter the signature:' },
+    ]);
+    signature = answers.signature as string;
+  }
+  await verifySignature({ email, password, message, address, blockchain, signature });
 };
 
 async function createWallet({

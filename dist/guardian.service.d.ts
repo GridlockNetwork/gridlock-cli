@@ -1,9 +1,9 @@
 export declare const addGuardianInquire: (options: {
     email?: string;
     password?: string;
-    guardianType?: string;
-    isOwnerGuardian?: boolean;
-    name?: string;
     nodeId?: string;
+    name?: string;
+    guardianType?: string;
     publicKey?: string;
+    isOwnerGuardian?: string;
 }) => Promise<void>;

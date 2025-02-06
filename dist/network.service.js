@@ -1,7 +1,7 @@
 import ora from 'ora';
 import chalk from 'chalk';
 import { loadUser } from './storage.service.js';
-import { getEmailandPassword } from './auth.service.js';
+import inquirer from 'inquirer';
 const guardianTypeMap = {
     'Owner Guardian': 'ownerGuardian',
     'Local Guardian': 'localGuardian',
@@ -11,15 +11,19 @@ const guardianTypeMap = {
     'Partner Guardian': 'partnerGuardian',
 };
 export const showNetworkInquire = async ({ email }) => {
+    console.log(chalk.hex('#4A90E2')('Entered values:'));
+    if (email)
+        console.log(chalk.hex('#4A90E2')(`Email: ${email}`));
     let password;
     if (!email) {
-        const credentials = await getEmailandPassword();
-        email = credentials.email;
-        password = credentials.password;
+        const answers = await inquirer.prompt([
+            { type: 'input', name: 'email', message: 'Enter your email:' },
+        ]);
+        email = answers.email;
     }
-    await showNetwork({ email: email, password: password });
+    await showNetwork({ email });
 };
-export function showNetwork({ email, password }) {
+export function showNetwork({ email }) {
     const spinner = ora('Retrieving user guardians...').start();
     const user = loadUser({ email });
     if (!user) {

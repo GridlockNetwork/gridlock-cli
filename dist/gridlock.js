@@ -48,7 +48,7 @@ program
     .option('-e, --email <email>', 'User email')
     .option('-p, --password <password>', 'User password')
     .option('-t, --type <type>', 'Type of guardian (cloud or gridlock)')
-    .option('-o, --owner', 'Is this the owner guardian')
+    .option('-o, --owner <owner>', 'Is this the owner guardian')
     .option('-n, --name <name>', 'Guardian name')
     .option('-i, --nodeId <nodeId>', 'Guardian node ID')
     .option('-k, --publicKey <publicKey>', 'Guardian public key')
