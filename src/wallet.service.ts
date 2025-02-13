@@ -11,9 +11,10 @@ export const createWalletInquire = async (options: {
 }) => {
   let { email, password, blockchain } = options;
   console.log('Entered values:');
-  if (email) console.log(`Email: ${chalk.hex('#4A90E2')(email)}`);
-  if (password) console.log(`Password: ${chalk.hex('#4A90E2')('*******')}`);
-  if (blockchain) console.log(`Blockchain: ${chalk.hex('#4A90E2')(blockchain)}`);
+  if (email) console.log(` Email: ${chalk.hex('#4A90E2')(email)}`);
+  if (password) console.log(` Password: ${chalk.hex('#4A90E2')('*******')}`);
+  if (blockchain) console.log(` Blockchain: ${chalk.hex('#4A90E2')(blockchain)}`);
+  console.log('\n');
 
   if (!email) {
     const answers = await inquirer.prompt([
@@ -44,10 +45,11 @@ export const signTransactionInquire = async (options: {
 }) => {
   let { email, password, address, message } = options;
   console.log('Entered values:');
-  if (email) console.log(`Email: ${chalk.hex('#4A90E2')(email)}`);
-  if (password) console.log(`Password: ${chalk.hex('#4A90E2')('*******')}`);
-  if (address) console.log(`Address: ${chalk.hex('#4A90E2')(address)}`);
-  if (message) console.log(`Message: ${chalk.hex('#4A90E2')(message)}`);
+  if (email) console.log(` Email: ${chalk.hex('#4A90E2')(email)}`);
+  if (password) console.log(` Password: ${chalk.hex('#4A90E2')('*******')}`);
+  if (address) console.log(` Address: ${chalk.hex('#4A90E2')(address)}`);
+  if (message) console.log(` Message: ${chalk.hex('#4A90E2')(message)}`);
+  console.log('\n');
 
   if (!email) {
     const answers = await inquirer.prompt([
@@ -86,12 +88,13 @@ export const verifySignatureInquire = async (options: {
 }) => {
   let { email, password, message, address, blockchain, signature } = options;
   console.log('Entered values:');
-  if (email) console.log(`Email: ${chalk.hex('#4A90E2')(email)}`);
-  if (password) console.log(`Password: ${chalk.hex('#4A90E2')('*******')}`);
-  if (message) console.log(`Message: ${chalk.hex('#4A90E2')(message)}`);
-  if (address) console.log(`Address: ${chalk.hex('#4A90E2')(address)}`);
-  if (blockchain) console.log(`Blockchain: ${chalk.hex('#4A90E2')(blockchain)}`);
-  if (signature) console.log(`Signature: ${chalk.hex('#4A90E2')(signature)}`);
+  if (email) console.log(` Email: ${chalk.hex('#4A90E2')(email)}`);
+  if (password) console.log(` Password: ${chalk.hex('#4A90E2')('*******')}`);
+  if (message) console.log(` Message: ${chalk.hex('#4A90E2')(message)}`);
+  if (address) console.log(` Address: ${chalk.hex('#4A90E2')(address)}`);
+  if (blockchain) console.log(` Blockchain: ${chalk.hex('#4A90E2')(blockchain)}`);
+  if (signature) console.log(` Signature: ${chalk.hex('#4A90E2')(signature)}`);
+  console.log('\n');
 
   if (!email) {
     const answers = await inquirer.prompt([

@@ -1,10 +1,19 @@
 # Gridlock CLI Getting Started
 
-The CLI is a command line tool for integrating with the Gridlock network. This CLI has examples that show how to interact with the network.
+The Gridlock CLI is a command-line tool for interacting with the Gridlock network. This guide will help you set up and run the necessary components.
 
-## Setup SDK
+## Components Overview
 
-The SDK is used to connect a client, like the CLI or another client of your making, to the Gridlock system. It ensures that the client has an easier time integrating with the system.
+You'll need to set up four main components:
+
+1. Gridlock SDK - Core library for interacting with the network
+2. Gridlock CLI - Command-line interface tool
+3. Orchestration Node - Central node for coordinating network operations
+4. Guardian Nodes - Network participants that help secure operations
+
+## 1. Setting Up the SDK
+
+The SDK provides the foundation for connecting clients to the Gridlock system:
 
 ```sh
 git clone https://github.com/GridlockNetwork/gridlock-sdk
@@ -14,7 +23,7 @@ yarn link
 yarn build:watch
 ```
 
-## Setup CLI
+## 2. Setting Up the CLI
 
 ```sh
 git clone https://github.com/GridlockNetwork/gridlock-cli
@@ -24,11 +33,13 @@ yarn
 yarn build:watch
 ```
 
-## Setup Orchestration Node
+## 3. Setting Up the Orchestration Node
 
-The orchestration node is the heart of the Gridlock network. It passes information between clients and guardians and facilitates complex interactions to create new wallets or sign transactions. As the name implies, the orchestration node makes the complex system work, but it is NOT a gatekeeper and cannot see any of the information being passed back and forth.
+The orchestration node coordinates communication between clients and guardians. While it facilitates interactions, it cannot access the encrypted information being transmitted.
 
-#### 1. Install GMP and Node version 18
+### Prerequisites
+
+#### Install GMP and Node.js 18
 
 **MacOS:**
 
@@ -38,80 +49,96 @@ brew install n
 n 18
 ```
 
-## Run orch node
+### Running the Orchestration Node
 
 ```sh
 git clone https://github.com/GridlockNetwork/gridlock-orch-node
-# add environment file .env with correct parameters to repo (see below)
+# Create a .env file with required parameters
 yarn
 yarn compile
 yarn run dev
 ```
 
-## Run guardian containers
+## 4. Setting Up Guardian Nodes
 
-Next, you need to create guardians that will be part of the network. To do this, run Docker containers that handle guardian tasks. These containers can run on any computer, either locally or in the cloud.
+Guardians are essential network participants that help secure operations. You'll need to run multiple guardian nodes using Docker containers.
 
 ### Prerequisites
 
-Before running the guardian containers, ensure that Docker is installed on your system.
-
-#### Install Docker
-
-**MacOS:**
+#### Install Docker (MacOS)
 
 ```sh
 brew install --cask docker
 open --background -a Docker
 ```
 
-#### Get personal access token from Github (PAT)
+#### Configure GitHub Access
 
-1. create a classic github token with ful repo permissions and read:packages
+1. Create a classic GitHub token with full repo permissions and read:packages at:
    https://github.com/settings/tokens
 
-2. login with your terminal
+2. Login to the GitHub Container Registry:
 
 ```sh
 echo YOUR_GITHUB_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
 ```
 
-3. start running docker containers for various guardians. Be sure to watch for the begging of the logs to find the node ID and public key of the guardian node. You will need this later. The output will look like this.
+### Running Guardian Containers
 
-```sh
+When starting each guardian, note the node ID and public key from the initial logs - you will need these values later for configuration:
+
+```
 INFO node: Retrieved node identity: node id: d1095ffb-de97-40ac-89e2-e10169ce3881, public key: "UBEFDYW24MU74YNMVOG5GGQUFJFFVLEAAL4VWYFTMUC3XZKNYQ54ZE4H"
 ```
 
-Start the first container for the owner guardian. This represents you
+Be sure to save these values as they appear in the logs when you first start each guardian container.
+
+#### 1. Start Owner Guardian
 
 ```sh
-docker run --name owner-guardian -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
+docker run --name owner-guardian \
+  -e STORAGE_DIR=./backend/test/data \
+  -e NODE_DB=/var/lib/gridlock/node/node.db \
+  -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 \
+  ghcr.io/gridlocknetwork/mvp/partner-node:latest
 ```
 
-Start another container for "guardian1" which is ideally a guardian you are running on a different computer.
+#### 2. Start First Guardian
 
 ```sh
-docker run --name guardian1 -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
+docker run --name guardian1 \
+  -e STORAGE_DIR=./backend/test/data \
+  -e NODE_DB=/var/lib/gridlock/node/node.db \
+  -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 \
+  ghcr.io/gridlocknetwork/mvp/partner-node:latest
 ```
 
-Start another container for "guardian2"
+#### 3. Start Second Guardian
 
 ```sh
-docker run --name guardian2 -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
+docker run --name guardian2 \
+  -e STORAGE_DIR=./backend/test/data \
+  -e NODE_DB=/var/lib/gridlock/node/node.db \
+  -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 \
+  ghcr.io/gridlocknetwork/mvp/partner-node:latest
 ```
 
-You now have three guardians running. You can see the logs by running one of these commands
+### Monitoring Guardian Logs
+
+View logs for any guardian using:
 
 ```sh
-docker start owner-guardian && docker logs -f partner-nodes-1
-docker start guardian-1 && docker logs -f partner-nodes-1
-docker start guardian-1 && docker logs -f partner-nodes-1
+docker start owner-guardian && docker logs -f owner-guardian
+docker start guardian1 && docker logs -f guardian1
+docker start guardian2 && docker logs -f guardian2
 ```
 
-Now you can start messing with the CLI
+## Using the CLI
+
+To see available commands:
 
 ```sh
- node dist/gridlock.js help
+node dist/gridlock.js help
 ```
 
-Read the [commands documentation](./commands.md) for information on how to run commands.
+For detailed information about available commands, see the [commands documentation](./commands.md).

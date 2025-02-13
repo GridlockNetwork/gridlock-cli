@@ -15,7 +15,8 @@ const guardianTypeMap = {
 
 export const showNetworkInquire = async ({ email }: { email?: string }) => {
   console.log(chalk.hex('#4A90E2')('Entered values:'));
-  if (email) console.log(chalk.hex('#4A90E2')(`Email: ${email}`));
+  if (email) console.log(chalk.hex('#4A90E2')(` Email: ${email}`));
+  console.log('\n');
 
   let password: string | undefined;
   if (!email) {

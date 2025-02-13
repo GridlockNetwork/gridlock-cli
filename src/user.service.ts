@@ -8,13 +8,17 @@ export const createUserInquire = async (options: {
   name?: string;
   email?: string;
   password?: string;
+  saveCredentials?: boolean;
 }) => {
-  let { name, email, password } = options;
+  let { name, email, password, saveCredentials = false } = options;
 
   console.log('Entered values:');
-  if (name) console.log(`User name: ${chalk.hex('#4A90E2')(name)}`);
-  if (email) console.log(`Email: ${chalk.hex('#4A90E2')(email)}`);
-  if (password) console.log(`Password: ${chalk.hex('#4A90E2')('*******')}`);
+  if (name) console.log(` User name: ${chalk.hex('#4A90E2')(name)}`);
+  if (email) console.log(` Email: ${chalk.hex('#4A90E2')(email)}`);
+  if (password) console.log(` Password: ${chalk.hex('#4A90E2')('*******')}`);
+  if (saveCredentials !== undefined)
+    console.log(` Save credentials: ${chalk.hex('#4A90E2')(saveCredentials)}`);
+  console.log('\n');
 
   if (!email) {
     const answers = await inquirer.prompt([
@@ -32,10 +36,12 @@ export const createUserInquire = async (options: {
     const answers = await inquirer.prompt([{ type: 'input', name: 'name', message: 'User name:' }]);
     name = answers.name;
   }
+
   await createUser({
     name: name as string,
     email: email as string,
     password: password as string,
+    saveCredentials: saveCredentials as boolean,
   });
 };
 
@@ -52,17 +58,23 @@ const createUser = async ({
   name,
   email,
   password,
+  saveCredentials,
 }: {
   name: string;
   email: string;
   password: string;
+  saveCredentials: boolean;
 }) => {
   const spinner = ora('Creating user...').start();
 
   try {
-    const response = await gridlock.createUser({ name, email, password });
+    const response = await gridlock.createUser({ name, email, password, saveCredentials });
     const { user } = response;
     spinner.succeed(`➕ Created account for user: ${chalk.hex('#4A90E2').bold(user.name)}`);
+
+    if (saveCredentials) {
+      console.log(chalk.green('     Credentials saved for future use'));
+    }
   } catch {
     spinner.fail('Failed to create user');
   }
@@ -76,8 +88,9 @@ export const recoverInquire = async ({
   password?: string;
 }): Promise<any> => {
   console.log('Entered values:');
-  if (email) console.log(`Email: ${chalk.hex('#4A90E2')(email)}`);
-  if (password) console.log(`Password: ${chalk.hex('#4A90E2')('*******')}`);
+  if (email) console.log(` Email: ${chalk.hex('#4A90E2')(email)}`);
+  if (password) console.log(` Password: ${chalk.hex('#4A90E2')('*******')}`);
+  console.log('\n');
 
   if (!email) {
     const answers = await inquirer.prompt([

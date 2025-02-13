@@ -11,18 +11,18 @@ export const addGuardianInquire = async (options: {
   name?: string;
   guardianType?: string;
   publicKey?: string;
-  isOwnerGuardian?: string;
+  isOwnerGuardian?: boolean;
 }) => {
-  let { email, password, nodeId, name, guardianType, publicKey, isOwnerGuardian } = options;
+  let { email, password, nodeId, name, guardianType, publicKey, isOwnerGuardian = false } = options;
 
   console.log('Entered values:');
-  if (email) console.log(`Email: ${chalk.hex('#4A90E2')(email)}`);
-  if (password) console.log(`Password: ${chalk.hex('#4A90E2')('*******')}`);
-  if (nodeId) console.log(`Node ID: ${chalk.hex('#4A90E2')(nodeId)}`);
-  if (name) console.log(`Name: ${chalk.hex('#4A90E2')(name)}`);
-  if (guardianType) console.log(`Guardian Type: ${chalk.hex('#4A90E2')(guardianType)}`);
-  if (publicKey) console.log(`Public Key: ${chalk.hex('#4A90E2')(publicKey)}`);
-  if (isOwnerGuardian) console.log(`Owner Guardian: ${chalk.hex('#4A90E2')(isOwnerGuardian)}`);
+  if (email) console.log(` Email: ${chalk.hex('#4A90E2')(email)}`);
+  if (password) console.log(` Password: ${chalk.hex('#4A90E2')('*******')}`);
+  if (nodeId) console.log(` Node ID: ${chalk.hex('#4A90E2')(nodeId)}`);
+  if (name) console.log(` Name: ${chalk.hex('#4A90E2')(name)}`);
+  if (guardianType) console.log(` Guardian Type: ${chalk.hex('#4A90E2')(guardianType)}`);
+  if (publicKey) console.log(` Public Key: ${chalk.hex('#4A90E2')(publicKey)}`);
+  console.log('\n');
 
   if (!email) {
     const answer = await inquirer.prompt([
@@ -81,7 +81,6 @@ export const addGuardianInquire = async (options: {
           default: false,
         },
       ]);
-      isOwnerGuardian = answer.isOwnerGuardian as string;
     }
 
     const guardianData = {
@@ -96,7 +95,7 @@ export const addGuardianInquire = async (options: {
       email: email!,
       password: password!,
       guardian: guardianData,
-      isOwnerGuardian: isOwnerGuardian!,
+      isOwnerGuardian: isOwnerGuardian,
     };
 
     await addCloudGuardian(addGuardianParams);
@@ -131,7 +130,7 @@ async function addCloudGuardian({
   email: string;
   password: string;
   guardian: IGuardian;
-  isOwnerGuardian: string;
+  isOwnerGuardian: boolean;
 }) {
   const spinner = ora('Adding guardian...').start();
 
