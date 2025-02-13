@@ -1,7 +1,7 @@
 import ora from 'ora';
 import chalk from 'chalk';
 import { loadUser } from './storage.service.js';
-import type { IUser } from 'gridlock-sdk/dist/types/user.type.d.ts';
+import type { IUser } from 'gridlock-sdk/dist/user/user.interfaces.js';
 import inquirer from 'inquirer';
 
 const guardianTypeMap = {
@@ -37,7 +37,7 @@ export function showNetwork({ email }: { email: string }) {
   }
 
   const guardians = user.nodePool || [];
-  const ownerGuardianNodeId = user.ownerGuardian as unknown as string;
+  const ownerGuardianNodeId = user.ownerGuardianId as unknown as string;
 
   spinner.succeed('User guardians retrieved successfully');
   console.log(

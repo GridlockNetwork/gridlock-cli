@@ -31,7 +31,7 @@ export function showNetwork({ email }) {
         return;
     }
     const guardians = user.nodePool || [];
-    const ownerGuardianNodeId = user.ownerGuardian;
+    const ownerGuardianNodeId = user.ownerGuardianId;
     spinner.succeed('User guardians retrieved successfully');
     console.log(chalk.bold(`\n🌐 Guardians for ${chalk.hex('#4A90E2').bold(user.name)} (${chalk
         .hex('#4A90E2')

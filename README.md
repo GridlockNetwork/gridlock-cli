@@ -1,23 +1,106 @@
-# Gridlock CLI
+# Gridlock CLI Getting Started
 
-CLI for quick actions: user creation, wallet creation, wallet actions (sign message, verify message), verify user network etc.
+The CLI is a command line tool for integrating with the Gridlock network. This CLI has examples that show how to interact with the network.
 
-### Prerequisite
+## Setup SDK
 
-1. Run the staging server locally and checkout to the branch `gridlock-sdk`.
-2. Run `ngrok http 8080` and keep the generated link for later use.
+The SDK is used to connect a client, like the CLI or another client of your making, to the Gridlock system. It ensures that the client has an easier time integrating with the system.
 
-## How to run all on staging:
+```sh
+git clone https://github.com/GridlockNetwork/gridlock-sdk
+cd gridlock-sdk
+yarn
+yarn link
+yarn build:watch
+```
 
-1. **Run partner guardians:**
+## Setup CLI
 
-```bash
+```sh
+git clone https://github.com/GridlockNetwork/gridlock-cli
+cd gridlock-cli
+yarn link gridlock-sdk
+yarn
+yarn build:watch
+```
+
+## Setup Orchestration Node
+
+The orchestration node is the heart of the Gridlock network. It passes information between clients and guardians and facilitates complex interactions to create new wallets or sign transactions. As the name implies, the orchestration node makes the complex system work, but it is NOT a gatekeeper and cannot see any of the information being passed back and forth.
+
+#### 1. Install GMP and Node version 18
+
+**MacOS:**
+
+```sh
+brew install gmp
+brew install n
+n 18
+```
+
+## Run orch node
+
+```sh
+git clone https://github.com/GridlockNetwork/gridlock-orch-node
+# add environment file .env with correct parameters to repo (see below)
+yarn
+yarn compile
+yarn run dev
+```
+
+## Run guardian containers
+
+Next, you need to create guardians that will be part of the network. To do this, run Docker containers that handle guardian tasks. These containers can run on any computer, either locally or in the cloud.
+
+### Prerequisites
+
+Before running the guardian containers, ensure that Docker is installed on your system.
+
+#### Install Docker
+
+**MacOS:**
+
+```sh
+brew install --cask docker
+open --background -a Docker
+```
+
+#### Get personal access token from Github (PAT)
+
+1. create a classic github token with ful repo permissions and read:packages
+   https://github.com/settings/tokens
+
+2. login with your terminal
+
+```sh
+echo YOUR_GITHUB_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+```
+
+3. start running docker containers for various guardians. Be sure to watch for the begging of the logs to find the node ID and public key of the guardian node. You will need this later. The output will look like this.
+
+```sh
+INFO node: Retrieved node identity: node id: d1095ffb-de97-40ac-89e2-e10169ce3881, public key: "UBEFDYW24MU74YNMVOG5GGQUFJFFVLEAAL4VWYFTMUC3XZKNYQ54ZE4H"
+```
+
+Start the first container for the owner guardian. This represents you
+
+```sh
 docker run --name owner-guardian -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
+```
+
+Start another container for "guardian1" which is ideally a guardian you are running on a different computer.
+
+```sh
 docker run --name guardian1 -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
+```
+
+Start another container for "guardian2"
+
+```sh
 docker run --name guardian2 -e STORAGE_DIR=./backend/test/data -e NODE_DB=/var/lib/gridlock/node/node.db -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 ghcr.io/gridlocknetwork/mvp/partner-node:latest
 ```
 
-or start and folow the logs of an existing container
+You now have three guardians running. You can see the logs by running one of these commands
 
 ```sh
 docker start owner-guardian && docker logs -f partner-nodes-1
@@ -25,55 +108,10 @@ docker start guardian-1 && docker logs -f partner-nodes-1
 docker start guardian-1 && docker logs -f partner-nodes-1
 ```
 
-2. **Grab the public key and nodeId from the docker logs for both partner guardians and add them to the server:**
-
-[Link to partnerGuardians.js](https://github.com/GridlockNetwork/gridlock-server-nodejs/blob/56314686564358e3c5d8f77590842d9f930bf8d1/src/store/constants/partnerGuardians.js#L115)
-
-Just add the nodeId and public Key there for both partner guardians. Leave the other properties of the objects untouched.
-
-3. **Create a folder on your local machine and clone the gridlock-sdk repository:**
+Now you can start messing with the CLI
 
 ```sh
-git clone https://github.com/GridlockNetwork/gridlock-sdk
+ node dist/gridlock.js help
 ```
 
-4. **Run the following commands in the gridlock-sdk directory:**
-
-```sh
-yarn
-yarn link
-yarn build:watch
-```
-
-Leave the terminal running for development.
-
-5. **Using other terminal window checkout and clone the gridlock-sdk-cli repository in the same parent folder as the gridlock-sdk:**
-
-```sh
-git clone https://github.com/GridlockNetwork/gridlock-cli
-cd gridlock-cli
-yarn
-yarn link "gridlock-sdk"
-```
-
-6. **Run the CLI:**
-
-Replace the baseUrl from [here](https://github.com/GridlockNetwork/gridlock-sdk-cli/blob/24e9a61ee219382ef720b04e8ea0279478a912e7/gridlock-cli.js#L98) with the ngrok link.
-
-Now you can run:
-
-```sh
- node gridlock-cli.js help
-```
-
-Then run:
-
-```sh
-node gridlock-cli.js <command-name> -h
-```
-
-to see the options for that command.
-
-When you make a modification on the gridlock-sdk side, because the `yarn build:watch` was run, it will automatically reflect in the CLI part without rebuilding.
-
-Test and enjoy!
+Read the [commands documentation](./commands.md) for information on how to run commands.

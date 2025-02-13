@@ -1,13 +1,13 @@
 {
-  "name": "gridlock-sdk-cli",
+  "name": "gridlock-cli",
   "version": "1.0.0",
-  "description": "Gridlock SDK CLI",
+  "description": "Gridlock CLI",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "build:watch": "tsc --watch"
   },
-  "author": "Rares",
+  "author": "Gridlock Team",
   "license": "ISC",
   "dependencies": {
     "@nats-io/nkeys": "^2.0.2",

@@ -1,6 +1,6 @@
 import ora from 'ora';
 import { gridlock } from './gridlock.js';
-import type { IGuardian } from 'gridlock-sdk/dist/types/guardian.type.d.ts';
+import type { IGuardian } from 'gridlock-sdk/dist/guardian/guardian.interfaces.js';
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 
