@@ -1,7 +1,7 @@
 import ora from 'ora';
 import chalk from 'chalk';
 import { loadUser } from './storage.service.js';
-import type { IUser } from 'gridlock-sdk/dist/user/user.interfaces.js';
+import { IUser } from 'gridlock-sdk/types';
 import inquirer from 'inquirer';
 
 const guardianTypeMap = {

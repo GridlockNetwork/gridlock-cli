@@ -5,7 +5,7 @@ import GridlockSdk from 'gridlock-sdk';
 import nacl from 'tweetnacl';
 import { API_KEY, BASE_URL, DEBUG_MODE } from './constants.js';
 import { loadGuardians } from './storage.service.js';
-import type { IGuardian } from 'gridlock-sdk/dist/guardian/guardian.interfaces.js';
+import { IGuardian } from 'gridlock-sdk/types';
 import inquirer from 'inquirer';
 
 const guardianTypeMap = {

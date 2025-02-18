@@ -1,8 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import type { IUser } from 'gridlock-sdk/dist/user/user.interfaces.js';
-import type { IGuardian } from 'gridlock-sdk/dist/guardian/guardian.interfaces.js';
+import { IUser, IGuardian } from 'gridlock-sdk/types';
 
 const USERS_DIR = path.join(os.homedir(), '.gridlock-cli', 'users');
 const GUARDIANS_DIR = path.join(os.homedir(), '.gridlock-cli', 'guardians');
