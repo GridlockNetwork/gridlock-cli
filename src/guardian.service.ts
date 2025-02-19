@@ -11,9 +11,19 @@ export const addGuardianInquire = async (options: {
   name?: string;
   guardianType?: string;
   publicKey?: string;
+  e2ePublicKey?: string;
   isOwnerGuardian?: boolean;
 }) => {
-  let { email, password, nodeId, name, guardianType, publicKey, isOwnerGuardian = false } = options;
+  let {
+    email,
+    password,
+    nodeId,
+    name,
+    guardianType,
+    publicKey,
+    e2ePublicKey,
+    isOwnerGuardian = false,
+  } = options;
 
   console.log('Entered values:');
   if (email) console.log(` Email: ${chalk.hex('#4A90E2')(email)}`);
@@ -22,6 +32,7 @@ export const addGuardianInquire = async (options: {
   if (name) console.log(` Name: ${chalk.hex('#4A90E2')(name)}`);
   if (guardianType) console.log(` Guardian Type: ${chalk.hex('#4A90E2')(guardianType)}`);
   if (publicKey) console.log(` Public Key: ${chalk.hex('#4A90E2')(publicKey)}`);
+  if (e2ePublicKey) console.log(` E2E Public Key: ${chalk.hex('#4A90E2')(e2ePublicKey)}`);
   console.log('\n');
 
   if (!email) {
@@ -72,6 +83,12 @@ export const addGuardianInquire = async (options: {
       ]);
       publicKey = answer.publicKey as string;
     }
+    if (!e2ePublicKey) {
+      const answer = await inquirer.prompt([
+        { type: 'input', name: 'e2ePublicKey', message: 'Guardian E2E public key:' },
+      ]);
+      e2ePublicKey = answer.e2ePublicKey as string;
+    }
     if (isOwnerGuardian === undefined) {
       const answer = await inquirer.prompt([
         {
@@ -87,6 +104,7 @@ export const addGuardianInquire = async (options: {
       name: name!,
       nodeId: nodeId!,
       publicKey: publicKey!,
+      e2ePublicKey: e2ePublicKey!,
       type: 'cloudGuardian' as 'cloudGuardian',
       active: true,
     };

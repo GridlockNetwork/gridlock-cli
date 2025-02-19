@@ -88,7 +88,8 @@ program
   .option('-o, --owner', 'Is this the owner guardian')
   .option('-n, --name <name>', 'Guardian name')
   .option('-i, --nodeId <nodeId>', 'Guardian node ID')
-  .option('-k, --publicKey <publicKey>', 'Guardian public key')
+  .option('-ik, --publicKey <publicKey>', 'Guardian public key')
+  .option('-ek, --e2ePublicKey <e2ePublicKey>', 'Guardian E2E public key')
   .action(async (options) => {
     await addGuardianInquire({
       email: options.email || storedCredentials?.email,
@@ -98,6 +99,7 @@ program
       name: options.name,
       nodeId: options.nodeId,
       publicKey: options.publicKey,
+      e2ePublicKey: options.e2ePublicKey,
     });
   });
 
