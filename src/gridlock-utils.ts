@@ -5,7 +5,8 @@ import GridlockSdk from 'gridlock-sdk';
 import nacl from 'tweetnacl';
 import { API_KEY, BASE_URL, DEBUG_MODE } from './constants.js';
 import { loadGuardians } from './storage.service.js';
-import type { IGuardian } from 'gridlock-sdk/dist/types/guardian.type.d.ts';
+import { IGuardian } from 'gridlock-sdk/types';
+import inquirer from 'inquirer';
 
 const guardianTypeMap = {
   'Owner Guardian': 'ownerGuardian',
@@ -90,17 +91,14 @@ export function allGuardians() {
 }
 
 export async function e2eProcessing({
-  recieverPrivKeyIdentifier,
-  password,
+  privateKey,
   message,
   senderPubKey,
 }: {
-  recieverPrivKeyIdentifier: string;
-  password: string;
+  privateKey: string;
   message: string;
   senderPubKey: string;
 }): Promise<string | null> {
-  const privateKey = recieverPrivKeyIdentifier;
   const privateKeyBuffer = Buffer.from(privateKey, 'base64');
   const kp = nacl.box.keyPair.fromSecretKey(privateKeyBuffer).secretKey;
   const publicKey = Buffer.from(senderPubKey, 'base64');
@@ -123,25 +121,103 @@ program
   .action(allGuardians);
 
 program
-  .command('test')
+  .command('e2e-receive')
   .description('Test the encryptContents function')
-  .option('-i, --email <email>', 'User email')
-  .option('-p, --password <password>', 'User password')
+  .option('-p, --privateKey <privateKey>', 'privateKey')
   .option('-m, --message <message>', 'Content to decrypt')
   .option('-s, --sender <sender>', 'Public key of the target node')
   .action(async (options) => {
-    if (options.message && options.email && options.password && options.sender) {
-      const encrypted = await e2eProcessing({
-        recieverPrivKeyIdentifier: options.email,
-        password: options.password,
-        message: options.message,
-        senderPubKey: options.sender,
+    let { privateKey, message, sender } = options;
+
+    console.log('Entered values:');
+    if (privateKey) console.log(` Private Key: ${chalk.hex('#4A90E2')('*******')}`);
+    if (message) console.log(` Message: ${chalk.hex('#4A90E2')(message)}`);
+    if (sender) console.log(` Sender Public Key: ${chalk.hex('#4A90E2')(sender)}`);
+    console.log('\n');
+
+    if (!privateKey) {
+      const answers = await inquirer.prompt([
+        { type: 'password', name: 'privateKey', message: 'Enter private key:' },
+      ]);
+      privateKey = answers.privateKey;
+    }
+    if (!message) {
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'message', message: 'Enter message to decrypt:' },
+      ]);
+      message = answers.message;
+    }
+    if (!sender) {
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'sender', message: 'Enter sender public key:' },
+      ]);
+      sender = answers.sender;
+    }
+
+    const encrypted = await e2eProcessing({
+      privateKey,
+      message,
+      senderPubKey: sender,
+    });
+    console.log('Encrypted content:', encrypted);
+  });
+
+program
+  .command('e2e-send')
+  .description("Encrypt content with the user's private key and target's public key")
+  .option('-e, --email <email>', 'User email')
+  .option('-p, --password <password>', 'User password')
+  .option('-t, --target <target>', 'Target public key')
+  .option('-m, --message <message>', 'Content to encrypt')
+  .action(async (options) => {
+    let { email, password, target, message } = options;
+
+    console.log('Entered values:');
+    if (email) console.log(` Email: ${chalk.hex('#4A90E2')(email)}`);
+    if (password) console.log(` Password: ${chalk.hex('#4A90E2')('*******')}`);
+    if (target) console.log(` Target Public Key: ${chalk.hex('#4A90E2')(target)}`);
+    if (message) console.log(` Message: ${chalk.hex('#4A90E2')(message)}`);
+    console.log('\n');
+
+    if (!email) {
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'email', message: 'Enter your email:' },
+      ]);
+      email = answers.email;
+    }
+    if (!password) {
+      const answers = await inquirer.prompt([
+        { type: 'password', name: 'password', message: 'Enter your password:' },
+      ]);
+      password = answers.password;
+    }
+    if (!target) {
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'target', message: 'Enter target public key:' },
+      ]);
+      target = answers.target;
+    }
+    if (!message) {
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'message', message: 'Enter message to encrypt:' },
+      ]);
+      message = answers.message;
+    }
+
+    try {
+      const encryptedContent = await gridlock.encryptContents({
+        content: message,
+        publicKey: target,
+        email,
+        password,
       });
-      // console.log('Encrypted content:', encrypted);
-    } else {
-      console.log(
-        'Please provide content, email, password, and target public key using the respective options.'
-      );
+      console.log('Encrypted content:', encryptedContent);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error('Encryption failed:', error.message);
+      } else {
+        console.error('Encryption failed:', error);
+      }
     }
   });
 
@@ -151,19 +227,35 @@ program
   .option('-e, --email <email>', 'User email')
   .option('-p, --password <password>', 'User password')
   .action(async (options) => {
-    if (options.email && options.password) {
-      try {
-        const response = await gridlock.login(options.email, options.password);
-        console.log('Login successful:', response);
-      } catch (error) {
-        if (error instanceof Error) {
-          console.error('Login failed:', error.message);
-        } else {
-          console.error('Login failed:', error);
-        }
+    let { email, password } = options;
+
+    console.log('Entered values:');
+    if (email) console.log(` Email: ${chalk.hex('#4A90E2')(email)}`);
+    if (password) console.log(` Password: ${chalk.hex('#4A90E2')('*******')}`);
+    console.log('\n');
+
+    if (!email) {
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'email', message: 'Enter your email:' },
+      ]);
+      email = answers.email;
+    }
+    if (!password) {
+      const answers = await inquirer.prompt([
+        { type: 'password', name: 'password', message: 'Enter your password:' },
+      ]);
+      password = answers.password;
+    }
+
+    try {
+      const response = await gridlock.login(email, password);
+      console.log('Login successful');
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error('Login failed:', error.message);
+      } else {
+        console.error('Login failed:', error);
       }
-    } else {
-      console.log('Please provide both email and password using the respective options.');
     }
   });
 

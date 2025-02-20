@@ -1,8 +1,8 @@
 import ora from 'ora';
 import chalk from 'chalk';
 import { loadUser } from './storage.service.js';
-import type { IUser } from 'gridlock-sdk/dist/types/user.type.d.ts';
-import { getEmailandPassword } from './auth.service.js';
+import { IUser } from 'gridlock-sdk/types';
+import inquirer from 'inquirer';
 
 const guardianTypeMap = {
   'Owner Guardian': 'ownerGuardian',
@@ -13,17 +13,22 @@ const guardianTypeMap = {
   'Partner Guardian': 'partnerGuardian',
 };
 
-export const showNetworkInquire = async ({ email }: { email: string }) => {
-  let password;
+export const showNetworkInquire = async ({ email }: { email?: string }) => {
+  console.log(chalk.hex('#4A90E2')('Entered values:'));
+  if (email) console.log(chalk.hex('#4A90E2')(` Email: ${email}`));
+  console.log('\n');
+
+  let password: string | undefined;
   if (!email) {
-    const credentials = await getEmailandPassword();
-    email = credentials.email;
-    password = credentials.password;
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'email', message: 'Enter your email:' },
+    ]);
+    email = answers.email as string;
   }
-  await showNetwork({ email: email as string, password: password as string });
+  await showNetwork({ email });
 };
 
-export function showNetwork({ email, password }: { email: string; password: string }) {
+export function showNetwork({ email }: { email: string }) {
   const spinner = ora('Retrieving user guardians...').start();
   const user: IUser | null = loadUser({ email });
 
@@ -33,7 +38,7 @@ export function showNetwork({ email, password }: { email: string; password: stri
   }
 
   const guardians = user.nodePool || [];
-  const ownerGuardianNodeId = user.ownerGuardian as unknown as string;
+  const ownerGuardianNodeId = user.ownerGuardianId as unknown as string;
 
   spinner.succeed('User guardians retrieved successfully');
   console.log(
