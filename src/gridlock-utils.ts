@@ -208,7 +208,7 @@ program
       const encryptedContent = await gridlock.encryptContents({
         content: message,
         publicKey: target,
-        identifier: email,
+        email,
         password,
       });
       console.log('Encrypted content:', encryptedContent);

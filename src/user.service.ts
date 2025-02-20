@@ -80,13 +80,13 @@ const createUser = async ({
   }
 };
 
-export const recoverInquire = async ({
+export const startRecoveryInquire = async ({
   email,
   password,
 }: {
   email?: string;
   password?: string;
-}): Promise<any> => {
+}) => {
   console.log('Entered values:');
   if (email) console.log(` Email: ${chalk.hex('#4A90E2')(email)}`);
   if (password) console.log(` Password: ${chalk.hex('#4A90E2')('*******')}`);
@@ -108,23 +108,84 @@ export const recoverInquire = async ({
     ]);
     password = answers.password;
   }
-  return await recover({ email: email as string, password: password as string });
+
+  await startRecovery({
+    email: email as string,
+    password: password as string,
+  });
 };
 
-export const recover = async ({
+export const startRecovery = async ({ email, password }: { email: string; password: string }) => {
+  const spinner = ora('Starting recovery...').start();
+  try {
+    await gridlock.startRecovery({ email, password });
+    spinner.succeed('Recovery initiated');
+  } catch (error) {
+    spinner.fail('Recovery failed');
+    console.error(error);
+  }
+};
+
+export const confirmRecoveryInquire = async ({
   email,
   password,
+  code,
+}: {
+  email?: string;
+  password?: string;
+  code?: string;
+}) => {
+  console.log('Entered values:');
+  if (email) console.log(` Email: ${chalk.hex('#4A90E2')(email)}`);
+  if (password) console.log(` Password: ${chalk.hex('#4A90E2')('*******')}`);
+  if (code) console.log(` Recovery Code: ${chalk.hex('#4A90E2')(code)}`);
+  console.log('\n');
+
+  if (!email) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'email', message: 'Enter your email:' },
+    ]);
+    email = answers.email;
+  }
+  if (!password) {
+    const answers = await inquirer.prompt([
+      { type: 'password', name: 'password', message: 'Enter your password:' },
+    ]);
+    password = answers.password;
+  }
+  if (!code) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'code', message: 'Enter your recovery code:' },
+    ]);
+    code = answers.code;
+  }
+
+  await confirmRecovery({
+    email: email as string,
+    password: password as string,
+    recoveryCode: code as string,
+  });
+};
+
+export const confirmRecovery = async ({
+  email,
+  password,
+  recoveryCode,
 }: {
   email: string;
   password: string;
-}): Promise<any> => {
-  const spinner = ora('Starting recovery...').start();
+  recoveryCode: string;
+}) => {
+  const spinner = ora('Confirming recovery...').start();
   try {
-    const result = await gridlock.recover({ email, password });
-    spinner.succeed('Recovery initiated');
-    return result;
+    await gridlock.confirmRecovery({
+      email,
+      password,
+      recoveryCode,
+    });
+    spinner.succeed('Recovery confirmed successfully.');
   } catch (error) {
-    spinner.fail('Recovery failed');
-    throw error;
+    spinner.fail('Recovery confirmation failed.');
+    console.error(error);
   }
 };

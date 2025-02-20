@@ -4,7 +4,7 @@ import ora from 'ora';
 import chalk from 'chalk';
 
 import { API_KEY, BASE_URL, DEBUG_MODE } from './constants.js';
-import { createUserInquire, recoverInquire } from './user.service.js';
+import { createUserInquire, startRecoveryInquire, confirmRecoveryInquire } from './user.service.js';
 import { addGuardianInquire } from './guardian.service.js';
 import { showNetworkInquire } from './network.service.js';
 import {
@@ -154,15 +154,29 @@ program
   });
 
 program
-  .command('recover')
+  .command('start-recovery')
   .description('Recover account using email')
   .option('-e, --email <email>', "Enter email for the account you're trying to recover")
-  .option(
-    '-p, --password <password>',
-    'User a new (or existing) password for the recovered account'
-  )
+  .option('-p, --password <password>', 'Use a new (or existing) password for the recovered account')
   .action(async (options) => {
-    await recoverInquire({ email: options.email, password: options.password });
+    await startRecoveryInquire({
+      email: options.email || storedCredentials?.email,
+      password: options.password || storedCredentials?.password,
+    });
+  });
+
+program
+  .command('confirm-recovery')
+  .description('Confirm recovery using the received recovery code')
+  .option('-e, --email <email>', 'User email (optional if credentials saved)')
+  .option('-p, --password <password>', 'User password (optional if credentials saved)')
+  .option('-c, --code <code>', 'Recovery confirmation code received by email')
+  .action(async (options) => {
+    await confirmRecoveryInquire({
+      email: options.email || storedCredentials?.email,
+      password: options.password || storedCredentials?.password,
+      code: options.code,
+    });
   });
 
 program
