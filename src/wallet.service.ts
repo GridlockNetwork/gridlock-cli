@@ -209,13 +209,13 @@ async function verifySignature({
       signature,
     });
 
-    if ((response.verified = true)) {
+    if (response.verified === true) {
       spinner.succeed(`Signature verified successfully:`);
       console.log(response.verified); //logging the response as standalone to help with automated testing
 
       console.log('      (👍°ヮ°)👍');
     } else {
-      spinner.fail(`Failed to verify signature`);
+      spinner.fail(`Invalid signature`);
     }
   } catch {
     spinner.fail(`Failed to verify signature`);
