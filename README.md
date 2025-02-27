@@ -85,52 +85,33 @@ echo YOUR_GITHUB_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-s
 
 ### Running Guardian Containers
 
-When starting each guardian, note the node ID and public key from the initial logs - you will need these values later for configuration:
+When starting each guardian, you will see important information needed for use later when adding guardians. The information you are looking for looks like this:
 
 ```
-INFO node: Retrieved node identity: node id: d1095ffb-de97-40ac-89e2-e10169ce3881, public key: "UBEFDYW24MU74YNMVOG5GGQUFJFFVLEAAL4VWYFTMUC3XZKNYQ54ZE4H"
+INFO node: Retrieved node identity: node id: 0d9c4dec-11b0-4e25-816b-ee285e8fc7c7, public key: "UBUKP574NFLPW37V5XBVDVIKNTY2XQCBNS3HNNTZFTLLI6SRRIYIDIGV", E2E public key: "+ekhdwTEHWZK2pXfTZ4uYiPDHi2lLaEN15qBdFiMgXs="
 ```
 
-Be sure to save these values as they appear in the logs when you first start each guardian container.
-
-#### 1. Start Owner Guardian
+#### 1. Start three guardian containers
 
 ```sh
-docker run --name owner-guardian \
-  -e STORAGE_DIR=./backend/test/data \
-  -e NODE_DB=/var/lib/gridlock/node/node.db \
-  -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 \
-  ghcr.io/gridlocknetwork/mvp/partner-node:latest
+for i in {1..3}; do
+  docker run -d --name guardian-$i \
+    -e STORAGE_DIR=./node \
+    -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 \
+    guardian-node
+done
 ```
 
-#### 2. Start First Guardian
-
-```sh
-docker run --name guardian1 \
-  -e STORAGE_DIR=./backend/test/data \
-  -e NODE_DB=/var/lib/gridlock/node/node.db \
-  -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 \
-  ghcr.io/gridlocknetwork/mvp/partner-node:latest
-```
-
-#### 3. Start Second Guardian
-
-```sh
-docker run --name guardian2 \
-  -e STORAGE_DIR=./backend/test/data \
-  -e NODE_DB=/var/lib/gridlock/node/node.db \
-  -e NATS_ADDRESS=nats://stagingnats.gridlock.network:4222 \
-  ghcr.io/gridlocknetwork/mvp/partner-node:latest
-```
-
-### Monitoring Guardian Logs
+#### 2. See the tops of the logs of the guardian containers to determine the node IDs and public keys
 
 View logs for any guardian using:
 
 ```sh
-docker start owner-guardian && docker logs -f owner-guardian
-docker start guardian1 && docker logs -f guardian1
-docker start guardian2 && docker logs -f guardian2
+for i in {1..3}; do
+  echo "Logs for guardian-$i:"
+  docker logs guardian-$i | head -n 3
+  echo "------------------------"
+done
 ```
 
 ## Using the CLI
