@@ -83,16 +83,14 @@ export const verifySignatureInquire = async (options: {
   password?: string;
   message?: string;
   address?: string;
-  blockchain?: string;
   signature?: string;
 }) => {
-  let { email, password, message, address, blockchain, signature } = options;
+  let { email, password, message, address, signature } = options;
   console.log('Entered values:');
   if (email) console.log(` Email: ${chalk.hex('#4A90E2')(email)}`);
   if (password) console.log(` Password: ${chalk.hex('#4A90E2')('*******')}`);
   if (message) console.log(` Message: ${chalk.hex('#4A90E2')(message)}`);
   if (address) console.log(` Address: ${chalk.hex('#4A90E2')(address)}`);
-  if (blockchain) console.log(` Blockchain: ${chalk.hex('#4A90E2')(blockchain)}`);
   if (signature) console.log(` Signature: ${chalk.hex('#4A90E2')(signature)}`);
   console.log('\n');
 
@@ -120,19 +118,13 @@ export const verifySignatureInquire = async (options: {
     ]);
     address = answers.address as string;
   }
-  if (!blockchain) {
-    const answers = await inquirer.prompt([
-      { type: 'list', name: 'blockchain', message: 'Select blockchain:', choices: SUPPORTED_COINS },
-    ]);
-    blockchain = answers.blockchain as string;
-  }
   if (!signature) {
     const answers = await inquirer.prompt([
       { type: 'input', name: 'signature', message: 'Enter the signature:' },
     ]);
     signature = answers.signature as string;
   }
-  await verifySignature({ email, password, message, address, blockchain, signature });
+  await verifySignature({ email, password, message, address, signature });
 };
 
 async function createWallet({
@@ -147,10 +139,10 @@ async function createWallet({
   const spinner = ora('Creating wallet...').start();
 
   try {
-    const wallet = await gridlock.createWallet(email, password, blockchain);
+    const wallet = await gridlock.createWallet({ email, password, blockchain });
     const blockchainCapitalized = blockchain.charAt(0).toUpperCase() + blockchain.slice(1);
     spinner.succeed(`➕ Created ${blockchainCapitalized} wallet with address:`);
-    console.log(wallet?.address); //logging the address of the wallet as standalone to help with automated testing
+    console.log(wallet?.address);
   } catch {
     spinner.fail(`Failed to create wallet`);
   }
@@ -177,7 +169,7 @@ async function signTransaction({
     });
     const signature = response.signature;
     spinner.succeed(`Transaction signed successfully with signature:`);
-    console.log(signature); //logging the signature as standalone to help with automated testing
+    console.log(signature);
   } catch {
     spinner.fail(`Failed to sign transaction`);
   }
@@ -188,14 +180,12 @@ async function verifySignature({
   password,
   message,
   address,
-  blockchain,
   signature,
 }: {
   email: string;
   password: string;
   message: string;
   address: string;
-  blockchain: string;
   signature: string;
 }) {
   const spinner = ora('Verifying signature...').start();
@@ -205,13 +195,12 @@ async function verifySignature({
       password,
       message,
       address,
-      blockchain,
       signature,
     });
 
     if (response.verified === true) {
       spinner.succeed(`Signature verified successfully:`);
-      console.log(response.verified); //logging the response as standalone to help with automated testing
+      console.log(response.verified);
 
       console.log('      (👍°ヮ°)👍');
     } else {

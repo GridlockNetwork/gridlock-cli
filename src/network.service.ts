@@ -5,15 +5,21 @@ import { IUser } from 'gridlock-sdk/types';
 import inquirer from 'inquirer';
 
 const guardianTypeMap = {
-  'Owner Guardian': 'ownerGuardian',
-  'Local Guardian': 'localGuardian',
-  'Social Guardian': 'socialGuardian',
-  'Cloud Guardian': 'cloudGuardian',
-  'Gridlock Guardian': 'gridlockGuardian',
-  'Partner Guardian': 'partnerGuardian',
+  'Owner Guardian': 'owner',
+  'Local Guardian': 'local',
+  'Social Guardian': 'social',
+  'Cloud Guardian': 'cloud',
+  'Gridlock Guardian': 'gridlock',
+  'Partner Guardian': 'partner',
 };
 
-export const showNetworkInquire = async ({ email }: { email?: string }) => {
+export const showNetworkInquire = async ({
+  email,
+  verbose,
+}: {
+  email?: string;
+  verbose?: boolean;
+}) => {
   console.log(chalk.hex('#4A90E2')('Entered values:'));
   if (email) console.log(chalk.hex('#4A90E2')(` Email: ${email}`));
   console.log('\n');
@@ -25,10 +31,10 @@ export const showNetworkInquire = async ({ email }: { email?: string }) => {
     ]);
     email = answers.email as string;
   }
-  await showNetwork({ email });
+  await showNetwork({ email, verbose });
 };
 
-export function showNetwork({ email }: { email: string }) {
+export function showNetwork({ email, verbose = false }: { email: string; verbose?: boolean }) {
   const spinner = ora('Retrieving user guardians...').start();
   const user: IUser | null = loadUser({ email });
 
@@ -54,11 +60,11 @@ export function showNetwork({ email }: { email: string }) {
     console.log('No guardians found.');
   } else {
     const emojiMap: { [key: string]: string } = {
-      localGuardian: '🏡',
-      socialGuardian: '👥',
-      cloudGuardian: '🌥️ ',
-      gridlockGuardian: '🛡️ ',
-      partnerGuardian: '🤝',
+      local: '🏡',
+      social: '👥',
+      cloud: '🌥️',
+      gridlock: '🛡️',
+      partner: '🤝',
     };
 
     guardians.forEach((guardian, index) => {
@@ -72,7 +78,10 @@ export function showNetwork({ email }: { email: string }) {
         ).find((key) => guardianTypeMap[key] === guardian.type)}`
       );
       console.log(`       ${chalk.bold('Node ID:')} ${guardian.nodeId}`);
-      console.log(`       ${chalk.bold('Public Key:')} ${guardian.publicKey}`);
+      if (verbose) {
+        console.log(`       ${chalk.bold('Identity Public Key:')} ${guardian.publicKey}`);
+        console.log(`       ${chalk.bold('Encryption Public Key:')} ${guardian.e2ePublicKey}`);
+      }
       const status = guardian.active ? chalk.green('ACTIVE') : chalk.red('INACTIVE');
       console.log(`       ${chalk.bold('Status:')} ${status}`);
       if (index < guardians.length - 1) {

@@ -20,18 +20,25 @@ Note that we currently have two keys, the nkeys signing key using the ed25519 cu
 
 This is the output from the modifed guardian container on the rust e2e branch
 
-```{
-  "node_id": "9242891d-0a68-4a8b-90a4-a1934b6b354b",
-  "public_key": "UATHUPF3HL6QD4GUSBIMJO4G5AWLFFBENJPPYWIBVSGRW4LNE6BQL6ZP",
-  "private_key": "SUAMAN66MFOAB2C6MXIA6DWGKIOOEMJZ5DQUTLUZJ2N3KTZJIXFSDZ4S6E",
-  "e2e_public": "j4P3JoRtBaGiAdOmN3R1JcM/Jdhwvmag1VqmOt2stno=",
-  "e2e_private": "HdYVTSOSVw9ttSd8Z5uQTTnPXci54iSRBMydY6oGWe8="
-}
+```
+Retrieved node identity: node id: 241ae6b0-66fc-421b-984c-5c3ed1b036f2, public key: "UAZ2FCJFPD4QJYPQK335HPBSO2KLHTUVBBMJHFPNHWNUN2BQLPWLOFMC", E2E public key: "jM1Gpqsz8YVUjYv8umyyXsTB4GnAtO9Io+M/SIOZBjw="
 ```
 
+## Command template to add three guardians
+
 ```sh
-node dist/gridlock.js add-guardian -t cloud -n "My computer" -o
+node dist/gridlock.js add-guardian -t cloud -n "Isabella" -i ENTER_NODE_ID -ik "ENTER_PUBLIC_KEY" -ek "ENTER_ENCRYPTION_KEY"
+
+node dist/gridlock.js add-guardian -t cloud -n "Charlotte" -i ENTER_NODE_ID -ik "ENTER_PUBLIC_KEY" -ek "ENTER_ENCRYPTION_KEY"
+
+node dist/gridlock.js add-guardian -t cloud -n "Amelia" -i ENTER_NODE_ID -ik "ENTER_PUBLIC_KEY" -ek "ENTER_ENCRYPTION_KEY" -o
 ```
+
+node dist/gridlock.js add-guardian -t cloud -n "Isabella" -i 241ae6b0-66fc-421b-984c-5c3ed1b036f2 -ik UAZ2FCJFPD4QJYPQK335HPBSO2KLHTUVBBMJHFPNHWNUN2BQLPWLOFMC -ek "jM1Gpqsz8YVUjYv8umyyXsTB4GnAtO9Io+M/SIOZBjw="
+
+node dist/gridlock.js add-guardian -t cloud -n "Charlotte" -i 0d9c4dec-11b0-4e25-816b-ee285e8fc7c7 -ik UBUKP574NFLPW37V5XBVDVIKNTY2XQCBNS3HNNTZFTLLI6SRRIYIDIGV -ek "+ekhdwTEHWZK2pXfTZ4uYiPDHi2lLaEN15qBdFiMgXs"
+
+node dist/gridlock.js add-guardian -t cloud -n "Amelia" -i bd750f73-461e-4b8f-bc01-ce97be67ebaf -ik UCOZ5PL4HVA2OKVLDLRUSZF4OH5ZH2JEQBCGPJM4BMWYARN4UX474MGE -ek "etN1yiXIPwNfnhTR5ci39smn+bgmlUdDj43wwe+Vxnc=" -o
 
 The add two Gridlock guardians which are already up and running for you in the cloud.
 
@@ -81,3 +88,51 @@ node dist/gridlock-utils.js e2e-send -m "this is my message" -t "uIaPp2B+SR49nFs
 ```sh
 node dist/gridlock-utils.js e2e-receive -p "Oc860iPn+GjHXiemYBc/uqtvorlyNyTqYKfuhoZn7gI=" -s "ImoxPRAF6qAmeS38suP1hYxsoR09YK+UN4hlptPVqUk=" -m "FOmuwcKOD9XpcSpJUsN5YVTOZYfOiM2Ex2P9ZR5xTst/ERIXSA1gdMAYMk3IHah64qAC2PzAosGNgQ=="
 ```
+
+# docker containers
+
+node dist/gridlock.js add-guardian \
+-t cloud \
+-n "Oliver" \
+-i "bd750f73-461e-4b8f-bc01-ce97be67ebaf" \
+-ik "UCOZ5PL4HVA2OKVLDLRUSZF4OH5ZH2JEQBCGPJM4BMWYARN4UX474MGE" \
+-ek "etN1yiXIPwNfnhTR5ci39smn+bgmlUdDj43wwe+Vxnc="
+
+node dist/gridlock.js add-guardian \
+-t cloud \
+-n "Henry" \
+-i "0d9c4dec-11b0-4e25-816b-ee285e8fc7c7" \
+-ik "UBUKP574NFLPW37V5XBVDVIKNTY2XQCBNS3HNNTZFTLLI6SRRIYIDIGV" \
+-ek "+ekhdwTEHWZK2pXfTZ4uYiPDHi2lLaEN15qBdFiMgXs="
+
+node dist/gridlock.js add-guardian \
+-t cloud \
+-n "James" \
+-i "241ae6b0-66fc-421b-984c-5c3ed1b036f2" \
+-ik "UAZ2FCJFPD4QJYPQK335HPBSO2KLHTUVBBMJHFPNHWNUN2BQLPWLOFMC" \
+-ek "jM1Gpqsz8YVUjYv8umyyXsTB4GnAtO9Io+M/SIOZBjw=" \
+-o
+
+# str8 from code
+
+node dist/gridlock.js add-guardian \
+-t cloud \
+-n "Chartruse" \
+-i "8e198cc0-eace-4b9b-a12c-7a6e6801078e" \
+-ik "UA2IGJVRR2LXXLUJTBDWRXH55IV2N5JNJQLABEH52COWVWXKYCFVEZJD" \
+-ek "DJeBSqPAN6J3tSy34Ora/Bdl4/B/K13pkOkZv4DNUCc="
+
+node dist/gridlock.js add-guardian \
+-t cloud \
+-n "Orange" \
+-i "fefd479f-cf2d-4663-9d36-e597a5d05328" \
+-ik "UC35C3EQ4SNGHYLACKP77NTP46Q6PDDSWCY3MTQ5AUAOY6ZSIAS4L5GS" \
+-ek "u0gSlgS6w2BkqMI8axOb2xi9kamRHmAgY5jssk38LXw="
+
+node dist/gridlock.js add-guardian \
+-t cloud \
+-n "Bloo" \
+-i "f90f889a-01ea-415f-81fe-ed624c6b0541" \
+-ik "UDFCR7NI5DJEAUSEIWWBIXBNQQLWBBPSSDSF5AOCMNW5LMZQGOVT7RCC" \
+-ek "JkKinrLp0IU/LKdjgQqzTGAzKjTAjoHvOCo8VUgToh0=" \
+-o

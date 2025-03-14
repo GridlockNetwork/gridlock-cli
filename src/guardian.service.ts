@@ -62,9 +62,7 @@ export const addGuardianInquire = async (options: {
     ]);
     guardianType = answer.guardianType;
   }
-  if (guardianType === 'gridlock') {
-    addGridlockGuardian({ email: email as string, password: password as string });
-  } else if (guardianType === 'cloud') {
+  if (guardianType === 'cloud') {
     if (!name) {
       const answer = await inquirer.prompt([
         { type: 'input', name: 'name', message: 'Guardian name:' },
@@ -105,7 +103,7 @@ export const addGuardianInquire = async (options: {
       nodeId: nodeId!,
       publicKey: publicKey!,
       e2ePublicKey: e2ePublicKey!,
-      type: 'cloudGuardian' as 'cloudGuardian',
+      type: 'cloud' as 'cloud',
       active: true,
     };
 
@@ -120,18 +118,30 @@ export const addGuardianInquire = async (options: {
   } else if (guardianType === 'social') {
     await addSocialGuardian({ email: email as string, password: password as string });
   } else {
-    console.error('Invalid guardian type. Please specify "gridlock", "cloud", or "social".');
+    addProfessionalGuardian({
+      email: email as string,
+      password: password as string,
+      type: guardianType as 'gridlock' | 'partner',
+    });
   }
 };
 
-async function addGridlockGuardian({ email, password }: { email: string; password: string }) {
+async function addProfessionalGuardian({
+  email,
+  password,
+  type,
+}: {
+  email: string;
+  password: string;
+  type: 'gridlock' | 'partner';
+}) {
   const spinner = ora('Adding Gridlock guardian...').start();
 
   try {
-    const guardian = await gridlock.addGridlockGuardian({ email, password });
-    if (guardian) {
+    const response = await gridlock.addProfessionalGuardian({ email, password, type });
+    if (response?.guardian) {
       spinner.succeed(
-        `Added ${chalk.hex('#4A90E2').bold(guardian.name)} to user's list of guardians`
+        `Added ${chalk.hex('#4A90E2').bold(response.guardian.name)} to user's list of guardians`
       );
     }
   } catch {
@@ -153,7 +163,12 @@ async function addCloudGuardian({
   const spinner = ora('Adding guardian...').start();
 
   try {
-    await gridlock.addGuardian({ email, password, guardian, isOwnerGuardian });
+    const response = await gridlock.addGuardian({
+      email,
+      password,
+      guardian,
+      isOwnerGuardian,
+    });
     spinner.succeed('Guardian assigned successfully');
   } catch {
     spinner.fail(`Failed to assign guardian`);

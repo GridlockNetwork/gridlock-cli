@@ -52,6 +52,7 @@ export const createUserInquire = async (options: {
  * @param {string} params.name - The name of the user.
  * @param {string} params.email - The email address of the user.
  * @param {string} params.password - The password for the user's account.
+ * @param {boolean} params.saveCredentials - Whether to save the user's credentials for future use.
  * @returns {Promise<void>} A promise that resolves when the user is created.
  */
 const createUser = async ({
@@ -187,5 +188,51 @@ export const confirmRecovery = async ({
   } catch (error) {
     spinner.fail('Recovery confirmation failed.');
     console.error(error);
+  }
+};
+
+export const saveCredentialsInquire = async (options: { email?: string; password?: string }) => {
+  let { email, password } = options;
+
+  console.log('Entered values:');
+  if (email) console.log(` Email: ${chalk.hex('#4A90E2')(email)}`);
+  if (password) console.log(` Password: ${chalk.hex('#4A90E2')('*******')}`);
+  console.log('\n');
+
+  if (!email) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'email', message: 'Enter your email:' },
+    ]);
+    email = answers.email;
+  }
+
+  if (!password) {
+    const answers = await inquirer.prompt([
+      { type: 'password', name: 'password', message: 'Enter your password:' },
+    ]);
+    password = answers.password;
+  }
+
+  await saveCredentials({
+    email: email as string,
+    password: password as string,
+  });
+};
+
+/**
+ * Logs in a user with the provided email and password and saves credentials.
+ *
+ * @param {Object} params - The parameters for logging in.
+ * @param {string} params.email - The email address of the user.
+ * @param {string} params.password - The password for the user's account.
+ * @returns {Promise<void>} A promise that resolves when the user is logged in.
+ */
+export const saveCredentials = async ({ email, password }: { email: string; password: string }) => {
+  const spinner = ora('Saving credentials...').start();
+  try {
+    await gridlock.saveStoredCredentials({ email, password });
+    spinner.succeed(`Credentials saved for future use`);
+  } catch (error) {
+    spinner.fail('Failed to save credentials');
   }
 };

@@ -4,7 +4,12 @@ import ora from 'ora';
 import chalk from 'chalk';
 
 import { API_KEY, BASE_URL, DEBUG_MODE } from './constants.js';
-import { createUserInquire, startRecoveryInquire, confirmRecoveryInquire } from './user.service.js';
+import {
+  createUserInquire,
+  startRecoveryInquire,
+  confirmRecoveryInquire,
+  saveCredentialsInquire,
+} from './user.service.js';
 import { addGuardianInquire } from './guardian.service.js';
 import { showNetworkInquire } from './network.service.js';
 import {
@@ -60,6 +65,7 @@ program
   .action(async (options) => {
     await showNetworkInquire({
       email: options.email || storedCredentials?.email,
+      verbose: verbose,
     });
   });
 
@@ -140,7 +146,6 @@ program
   .option('-p, --password <password>', 'Network access password (optional if credentials saved)')
   .option('-m, --message <message>', 'Message to be verified')
   .option('-a, --address <address>', 'Address')
-  .option('-b, --blockchain <blockchain>', 'Blockchain')
   .option('-s, --signature <signature>', 'Signature to be verified')
   .action(async (options) => {
     await verifySignatureInquire({
@@ -148,7 +153,6 @@ program
       password: options.password || storedCredentials?.password,
       message: options.message,
       address: options.address,
-      blockchain: options.blockchain,
       signature: options.signature,
     });
   });
@@ -180,15 +184,27 @@ program
   });
 
 program
-  .command('logout')
+  .command('save-credentials')
+  .description('Login and save credentials for future use')
+  .option('-e, --email <email>', 'User email')
+  .option('-p, --password <password>', 'User password')
+  .action(async (options) => {
+    await saveCredentialsInquire({
+      email: options.email,
+      password: options.password,
+    });
+  });
+
+program
+  .command('clear-credentials')
   .description('Clear saved credentials')
   .action(async () => {
-    const spinner = ora('Logging out...').start();
+    const spinner = ora('Clearing credentials...').start();
     try {
       await gridlock.clearStoredCredentials();
-      spinner.succeed('Logged out successfully');
+      spinner.succeed('Credentials cleared successfully');
     } catch (error) {
-      spinner.fail('Failed to logout');
+      spinner.fail('Failed to clear credentials');
     }
   });
 
