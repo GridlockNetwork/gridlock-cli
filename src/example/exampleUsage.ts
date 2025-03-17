@@ -1,10 +1,23 @@
 import gridlock from './initGridlock.js';
 import { IGuardian } from 'gridlock-sdk/types';
 import chalk from 'chalk';
+import readline from 'readline';
 
 // **************************************************************************************
-// CONFIGURATION: Update these values with your own guardian details
+// CONFIGURATION: Update these values with your own settings
 // **************************************************************************************
+// User details
+const USER_EMAIL = 'gilfoyle@piedpiper.com';
+const USER_PASSWORD = 'password123';
+const USER_NAME = 'Bertram Gilfoyle';
+
+// Recovery settings
+const RECOVERY_PASSWORD = 'recovery_password123';
+
+// Blockchain settings
+const BLOCKCHAIN = 'solana'; // Options: 'solana', 'ethereum', etc.
+
+// Cloud Guardian details
 const CLOUD_GUARDIAN: IGuardian = {
   name: 'EXAMPLE CLOUD GUARDIAN',
   nodeId: '8e198cc0-eace-4b9b-a12c-7a6e6801078e',
@@ -26,15 +39,15 @@ console.log(chalk.green('\n' + '*'.repeat(80)));
 console.log(chalk.green('STEP 1: CREATING A NEW USER'));
 console.log(chalk.green('*'.repeat(80)));
 console.log('Creating user with the following details:');
-console.log('- Name: Bertram Gilfoyle');
-console.log('- Email: gilfoyle@piedpiper.com');
-console.log('- Password: password123');
+console.log(`- Name: ${USER_NAME}`);
+console.log(`- Email: ${USER_EMAIL}`);
+console.log('- Password: [hidden for security]');
 
 try {
   const { user, authTokens } = await gridlock.createUser({
-    name: 'Bertram Gilfoyle',
-    email: 'gilfoyle@piedpiper.com',
-    password: 'password123',
+    name: USER_NAME,
+    email: USER_EMAIL,
+    password: USER_PASSWORD,
     saveCredentials: false,
   });
 
@@ -65,8 +78,8 @@ console.log('- Is Owner Guardian: Yes');
 
 try {
   const response = await gridlock.addGuardian({
-    email: 'gilfoyle@piedpiper.com',
-    password: 'password123',
+    email: USER_EMAIL,
+    password: USER_PASSWORD,
     guardian: guardianData,
     isOwnerGuardian: true,
   });
@@ -89,8 +102,8 @@ console.log('- Type: gridlock');
 
 try {
   const response = await gridlock.addProfessionalGuardian({
-    email: 'gilfoyle@piedpiper.com',
-    password: 'password123',
+    email: USER_EMAIL,
+    password: USER_PASSWORD,
     type: 'gridlock',
   });
 
@@ -112,8 +125,8 @@ console.log('- Type: partner');
 
 try {
   const partnerGuardian = await gridlock.addProfessionalGuardian({
-    email: 'gilfoyle@piedpiper.com',
-    password: 'password123',
+    email: USER_EMAIL,
+    password: USER_PASSWORD,
     type: 'partner',
   });
 
@@ -131,16 +144,16 @@ console.log(chalk.red('\n' + '*'.repeat(80)));
 console.log(chalk.red('STEP 5: CREATING A WALLET'));
 console.log(chalk.red('*'.repeat(80)));
 console.log('Creating a new wallet:');
-console.log('- Blockchain: solana');
+console.log(`- Blockchain: ${BLOCKCHAIN}`);
 
 // Declare wallet address variable outside the try block so it can be used in later steps
 let walletAddress: string | undefined;
 
 try {
   const wallet = await gridlock.createWallet({
-    email: 'gilfoyle@piedpiper.com',
-    password: 'password123',
-    blockchain: 'solana',
+    email: USER_EMAIL,
+    password: USER_PASSWORD,
+    blockchain: BLOCKCHAIN,
   });
 
   walletAddress = wallet?.address;
@@ -170,8 +183,8 @@ try {
   }
 
   const signature = await gridlock.signTransaction({
-    email: 'gilfoyle@piedpiper.com',
-    password: 'password123',
+    email: USER_EMAIL,
+    password: USER_PASSWORD,
     address: walletAddress,
     message,
   });
@@ -190,8 +203,8 @@ try {
   console.log(`"${message}"`);
 
   const isVerified = await gridlock.verifySignature({
-    email: 'gilfoyle@piedpiper.com',
-    password: 'password123',
+    email: USER_EMAIL,
+    password: USER_PASSWORD,
     message,
     address: walletAddress,
     signature: signature.signature,
@@ -205,3 +218,79 @@ try {
 console.log('\n' + '='.repeat(80));
 console.log('EXAMPLE COMPLETED');
 console.log('='.repeat(80));
+
+// **************************************************************************************
+// STEP 8: ACCOUNT RECOVERY
+// **************************************************************************************
+console.log(chalk.hex('#FF8C00')('\n' + '*'.repeat(80)));
+console.log(chalk.hex('#FF8C00')('STEP 8: ACCOUNT RECOVERY'));
+console.log(chalk.hex('#FF8C00')('*'.repeat(80)));
+console.log('Demonstrating account recovery process:');
+console.log(`- Email: ${USER_EMAIL}`);
+console.log(`- New Password: ${RECOVERY_PASSWORD}`);
+
+// Create readline interface for user input
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
+// Function to get user input
+const getUserInput = (prompt: string): Promise<string> => {
+  return new Promise((resolve) => {
+    rl.question(prompt, (answer) => {
+      resolve(answer);
+    });
+  });
+};
+
+// Initiate recovery process
+const initiateRecovery = async () => {
+  try {
+    console.log('\nInitiating account recovery...');
+
+    await gridlock.startRecovery({
+      email: USER_EMAIL,
+      password: RECOVERY_PASSWORD,
+    });
+
+    console.log('\n✅ Recovery initiated successfully!');
+    console.log(`- A verification code has been sent to ${USER_EMAIL}`);
+
+    // Wait for user to input the verification code
+    const recoveryCode = await getUserInput(
+      '\nPlease check your email and enter the verification code: '
+    );
+
+    // Confirm recovery with the code
+    console.log('\nConfirming recovery with provided code...');
+
+    await gridlock.confirmRecovery({
+      email: USER_EMAIL,
+      password: RECOVERY_PASSWORD,
+      recoveryCode: recoveryCode,
+    });
+
+    console.log('\n✅ Recovery confirmed successfully!');
+    console.log('- Account has been recovered with the new password');
+    console.log('- You can now access your wallet and guardians with the new credentials');
+  } catch (error) {
+    console.error('❌ Error during recovery process:', error);
+  } finally {
+    // Close readline interface
+    rl.close();
+  }
+};
+
+// Ask user if they want to try the recovery process
+console.log('\nWould you like to try the account recovery process?');
+console.log('Note: This will send a real email if connected to a real backend.');
+
+rl.question('Proceed with recovery demo? (yes/no): ', (answer) => {
+  if (answer.toLowerCase() === 'yes' || answer.toLowerCase() === 'y') {
+    initiateRecovery();
+  } else {
+    console.log('\nRecovery demo skipped. Example completed.');
+    rl.close();
+  }
+});
