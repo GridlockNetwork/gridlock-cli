@@ -5,7 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build:watch": "tsc --watch"
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "example": "node --experimental-specifier-resolution=node dist/example/exampleUsage.js"
   },
   "author": "Gridlock Team",
   "license": "ISC",

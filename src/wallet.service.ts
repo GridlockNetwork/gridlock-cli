@@ -141,8 +141,7 @@ async function createWallet({
   try {
     const wallet = await gridlock.createWallet({ email, password, blockchain });
     const blockchainCapitalized = blockchain.charAt(0).toUpperCase() + blockchain.slice(1);
-    spinner.succeed(`➕ Created ${blockchainCapitalized} wallet with address:`);
-    console.log(wallet?.address);
+    spinner.succeed(`➕ Created ${blockchainCapitalized} wallet with address: ${wallet?.address}`);
   } catch {
     spinner.fail(`Failed to create wallet`);
   }
@@ -168,8 +167,7 @@ async function signTransaction({
       message: message,
     });
     const signature = response.signature;
-    spinner.succeed(`Transaction signed successfully with signature:`);
-    console.log(signature);
+    spinner.succeed(`Transaction signed successfully with signature: ${signature}`);
   } catch {
     spinner.fail(`Failed to sign transaction`);
   }
@@ -197,7 +195,6 @@ async function verifySignature({
       address,
       signature,
     });
-
     if (response.verified === true) {
       spinner.succeed(`Signature verified successfully:`);
       console.log(response.verified);
