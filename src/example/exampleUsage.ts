@@ -12,7 +12,7 @@ const USER_PASSWORD = 'password123';
 const USER_NAME = 'Bertram Gilfoyle';
 
 // Recovery settings
-const RECOVERY_PASSWORD = 'recovery_password123';
+const RECOVERY_PASSWORD = 'my_new_password123';
 
 // Blockchain settings
 const BLOCKCHAIN = 'solana'; // Options: 'solana', 'ethereum', etc.
@@ -41,7 +41,7 @@ console.log(chalk.green('*'.repeat(80)));
 console.log('Creating user with the following details:');
 console.log(`- Name: ${USER_NAME}`);
 console.log(`- Email: ${USER_EMAIL}`);
-console.log('- Password: [hidden for security]');
+console.log(`- Password: ${USER_PASSWORD}`);
 
 try {
   const { user, authTokens } = await gridlock.createUser({
@@ -215,10 +215,6 @@ try {
   console.error('❌ Error during signing or verification:', error);
 }
 
-console.log('\n' + '='.repeat(80));
-console.log('EXAMPLE COMPLETED');
-console.log('='.repeat(80));
-
 // **************************************************************************************
 // STEP 8: ACCOUNT RECOVERY
 // **************************************************************************************
@@ -244,7 +240,7 @@ const getUserInput = (prompt: string): Promise<string> => {
   });
 };
 
-// Initiate recovery process
+// Define the recovery function
 const initiateRecovery = async () => {
   try {
     console.log('\nInitiating account recovery...');
@@ -274,23 +270,78 @@ const initiateRecovery = async () => {
     console.log('\n✅ Recovery confirmed successfully!');
     console.log('- Account has been recovered with the new password');
     console.log('- You can now access your wallet and guardians with the new credentials');
+
+    // **************************************************************************************
+    // STEP 9: VERIFY RECOVERY SUCCESS
+    // **************************************************************************************
+    // Only proceed to Step 9 if Step 8 was successful
+    console.log(chalk.hex('#9932CC')('\n' + '*'.repeat(80)));
+    console.log(chalk.hex('#9932CC')('STEP 9: VERIFY RECOVERY SUCCESS'));
+    console.log(chalk.hex('#9932CC')('*'.repeat(80)));
+    console.log(
+      'Confirming successful recovery by signing and verifying a message with new credentials:'
+    );
+
+    const recoveryTestMessage = 'This message confirms successful account recovery';
+    console.log(`- Test Message: "${recoveryTestMessage}"`);
+    console.log(`- Using Email: ${USER_EMAIL}`);
+    console.log(`- Using New Password: ${RECOVERY_PASSWORD}`); //this is an example program, so we're showing the password here
+
+    // Check if wallet address is available
+    if (!walletAddress) {
+      throw new Error('Wallet address not available. Cannot verify recovery success.');
+    }
+
+    console.log('\nSigning message with recovered account...');
+    await new Promise((resolve) => setTimeout(resolve, 3000)); //delay to ensure fs operations are complete on signing node
+
+    // Sign message with new credentials
+    const recoverySignature = await gridlock.signTransaction({
+      email: USER_EMAIL,
+      password: RECOVERY_PASSWORD,
+      address: walletAddress,
+      message: recoveryTestMessage,
+    });
+
+    console.log('\n✅ Message signed successfully with new credentials!');
+    console.log('- Signature:', recoverySignature.signature);
+    console.log('- Wallet Address Used:', walletAddress);
+
+    // Verify signature with new credentials
+    console.log('\nVerifying signature with recovered account...');
+
+    const isRecoveryVerified = await gridlock.verifySignature({
+      email: USER_EMAIL,
+      password: RECOVERY_PASSWORD,
+      message: recoveryTestMessage,
+      address: walletAddress,
+      signature: recoverySignature.signature,
+    });
+
+    console.log('\n✅ Recovery verification result:', isRecoveryVerified ? 'VALID ✓' : 'INVALID ✗');
+
+    if (isRecoveryVerified) {
+      console.log('\n🎉 ACCOUNT RECOVERY SUCCESSFUL! 🎉');
+      console.log('- Your account has been fully recovered with the new password');
+      console.log('- You have full access to your wallet and can sign transactions');
+    } else {
+      console.log('\n⚠️ Recovery verification failed. Please check your credentials.');
+    }
+
+    console.log('\nStep 9 (Verify Recovery Success) completed.');
+    console.log('\n' + '='.repeat(80));
+    console.log('RECOVERY EXAMPLE COMPLETED');
+    console.log('='.repeat(80));
   } catch (error) {
     console.error('❌ Error during recovery process:', error);
+    console.log('\nRecovery example could not be completed due to an error.');
   } finally {
-    // Close readline interface
+    // Close readline interface after all steps are complete
     rl.close();
   }
 };
 
-// Ask user if they want to try the recovery process
-console.log('\nWould you like to try the account recovery process?');
-console.log('Note: This will send a real email if connected to a real backend.');
-
-rl.question('Proceed with recovery demo? (yes/no): ', (answer) => {
-  if (answer.toLowerCase() === 'yes' || answer.toLowerCase() === 'y') {
-    initiateRecovery();
-  } else {
-    console.log('\nRecovery demo skipped. Example completed.');
-    rl.close();
-  }
-});
+// Run recovery process automatically
+console.log('\nStarting recovery process automatically...');
+// Proceed directly with recovery without confirmation
+initiateRecovery();
