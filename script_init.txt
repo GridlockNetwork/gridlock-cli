@@ -1,0 +1,8 @@
+// Script initialization
+console.log('Starting Gridlock SDK example...');
+if (config.autoRun) {
+  console.log(chalk.blue('[AUTO] Running in automatic mode - no user input required'));
+} else {
+  console.log(chalk.yellow('[INTERACTIVE] This example will proceed step by step with your input'));
+}
+runExample();

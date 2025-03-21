@@ -4,10 +4,14 @@
   "description": "Gridlock CLI",
   "main": "index.js",
   "type": "module",
+  "bin": {
+    "gridlock": "./bin/gridlock.js"
+  },
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "example": "node --experimental-specifier-resolution=node dist/example/exampleUsage.js"
+    "example": "node --experimental-specifier-resolution=node dist/example/exampleUsage.js",
+    "postbuild": "chmod +x ./bin/gridlock.js"
   },
   "author": "Gridlock Team",
   "license": "ISC",

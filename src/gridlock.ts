@@ -29,10 +29,19 @@ export const gridlock = new GridlockSdk({
 let verbose = false;
 let storedCredentials: { email: string; password: string } | null = null;
 
-program.option('-v, --verbose', 'Enable verbose output').hook('preAction', async (thisCommand) => {
-  verbose = thisCommand.opts().verbose;
-  gridlock.setVerbose(verbose);
-});
+program
+  .option('-v, --verbose', 'Enable verbose output')
+  .addHelpText(
+    'after',
+    `
+Additional Commands:
+  run-example [options]       Run the Gridlock SDK example
+                              Use 'gridlock run-example --help' for more information`
+  )
+  .hook('preAction', async (thisCommand) => {
+    verbose = thisCommand.opts().verbose;
+    gridlock.setVerbose(verbose);
+  });
 program.hook('preAction', async () => {
   const spinner = ora('Checking saved credentials...').start();
 

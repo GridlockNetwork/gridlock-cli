@@ -116,10 +116,42 @@ done
 
 ## Using the CLI
 
+### Installation
+
+After building the CLI, you can make it available globally with:
+
+```sh
+npm link
+```
+
+This will create a `gridlock` command that you can run from anywhere.
+
+### Available Commands
+
 To see available commands:
 
 ```sh
-node dist/gridlock.js help
+gridlock --help
+```
+
+For example, to create a new user:
+
+```sh
+gridlock create-user -n "John Doe" -e john@example.com -p yourpassword -s
+```
+
+### Running the Example
+
+The CLI includes a comprehensive example that demonstrates key Gridlock SDK features:
+
+```sh
+gridlock run-example
+```
+
+To run the example in interactive mode:
+
+```sh
+gridlock run-example --interactive
 ```
 
 For detailed information about available commands, see the [commands documentation](./commands.md).

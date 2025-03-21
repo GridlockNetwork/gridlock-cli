@@ -13,8 +13,8 @@ if (process.argv.includes('--help') || process.argv.includes('-h')) {
   console.log('  --interactive, -i  Run the example in interactive mode (pause between steps)');
   console.log('  --help, -h         Show this help information');
   console.log('\nExample:');
-  console.log('  node dist/example/exampleUsage.js             # Run in automatic mode (default)');
-  console.log('  node dist/example/exampleUsage.js --interactive  # Run in interactive mode');
+  console.log('  gridlock run-example             # Run in automatic mode (default)');
+  console.log('  gridlock run-example --interactive  # Run in interactive mode');
   console.log('\nError Handling:');
   console.log('  Automatic Mode: Any error will stop execution');
   console.log('  Interactive Mode: You can choose to continue after errors');
@@ -34,7 +34,8 @@ const rl = readline.createInterface({
 
 // Function to wait for user to press any key to continue
 const waitForKeyPress = async (
-  message: string = 'Press any key to continue to the next step...'
+  message: string = 'Press any key to continue to the next step...',
+  color: (text: string) => string = chalk.yellow
 ): Promise<void> => {
   // If autoRun is enabled, don't wait for keypress
   if (config.autoRun) {
@@ -43,8 +44,25 @@ const waitForKeyPress = async (
   }
 
   return new Promise((resolve) => {
-    console.log('\n' + chalk.yellow(message));
-    process.stdin.once('data', () => {
+    // Update the message to include exit instructions
+    console.log('\n' + color(message + ' (Press ESC to exit)'));
+
+    // Configure raw mode to get raw key presses
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+
+    // Handle key press
+    process.stdin.once('data', (data) => {
+      // Reset stdin to normal mode
+      process.stdin.setRawMode(false);
+      process.stdin.pause();
+
+      // Check if ESC key was pressed (ESC has character code 27)
+      if (data[0] === 27) {
+        rl.close();
+        process.exit(0);
+      }
+
       resolve();
     });
   });
@@ -97,6 +115,9 @@ async function runExample() {
     console.log('- Base URL:', config.BASE_URL);
     console.log('- Debug Mode:', config.DEBUG_MODE ? 'Enabled' : 'Disabled');
 
+    // Pause to let the user read configuration and begin when ready
+    await waitForKeyPress('Press any key to begin...', chalk.blue);
+
     // **************************************************************************************
     // STEP 1: CREATING A NEW USER
     // **************************************************************************************
@@ -108,7 +129,7 @@ async function runExample() {
     console.log(`- Email: ${USER_EMAIL}`);
     console.log(`- Password: ${USER_PASSWORD}`);
 
-    await waitForKeyPress('Press any key to create user...');
+    await waitForKeyPress('Press any key to create user...', chalk.green);
 
     try {
       const { user, authTokens } = await gridlock.createUser({
@@ -124,18 +145,12 @@ async function runExample() {
       console.log('- Auth Tokens Received:', authTokens ? 'Yes' : 'No');
     } catch (error) {
       console.error('❌ Error creating user:', error);
-      if (await shouldContinueAfterError()) {
-        console.log('Continuing to next step despite error...');
-      } else {
-        throw error;
-      }
+      throw error;
     }
 
     // **************************************************************************************
     // STEP 2: ADDING A CLOUD GUARDIAN
     // **************************************************************************************
-    await waitForKeyPress();
-
     console.log(chalk.cyan('\n' + '*'.repeat(80)));
     console.log(chalk.cyan('STEP 2: ADDING A CLOUD GUARDIAN'));
     console.log(chalk.cyan('*'.repeat(80)));
@@ -149,7 +164,7 @@ async function runExample() {
     console.log('- Type:', guardianData.type);
     console.log('- Is Owner Guardian: Yes');
 
-    await waitForKeyPress('Press any key to add cloud guardian...');
+    await waitForKeyPress('Press any key to add cloud guardian...', chalk.cyan);
 
     try {
       const response = await gridlock.addGuardian({
@@ -164,25 +179,19 @@ async function runExample() {
       console.log('- Guardian Type:', response.guardian.type);
     } catch (error) {
       console.error('❌ Error adding Cloud Guardian:', error);
-      if (await shouldContinueAfterError()) {
-        console.log('Continuing to next step despite error...');
-      } else {
-        throw error;
-      }
+      throw error;
     }
 
     // **************************************************************************************
     // STEP 3: ADDING A GRIDLOCK GUARDIAN
     // **************************************************************************************
-    await waitForKeyPress();
-
     console.log(chalk.magenta('\n' + '*'.repeat(80)));
     console.log(chalk.magenta('STEP 3: ADDING A GRIDLOCK GUARDIAN'));
     console.log(chalk.magenta('*'.repeat(80)));
     console.log('Adding a professional Gridlock Guardian:');
     console.log('- Type: gridlock');
 
-    await waitForKeyPress('Press any key to add gridlock guardian...');
+    await waitForKeyPress('Press any key to add gridlock guardian...', chalk.magenta);
 
     try {
       const response = await gridlock.addProfessionalGuardian({
@@ -196,25 +205,19 @@ async function runExample() {
       console.log('- Guardian Type:', response.guardian.type);
     } catch (error) {
       console.error('❌ Error adding Gridlock Guardian:', error);
-      if (await shouldContinueAfterError()) {
-        console.log('Continuing to next step despite error...');
-      } else {
-        throw error;
-      }
+      throw error;
     }
 
     // **************************************************************************************
     // STEP 4: ADDING A PARTNER GUARDIAN
     // **************************************************************************************
-    await waitForKeyPress();
-
     console.log(chalk.yellow('\n' + '*'.repeat(80)));
     console.log(chalk.yellow('STEP 4: ADDING A PARTNER GUARDIAN'));
     console.log(chalk.yellow('*'.repeat(80)));
     console.log('Adding a professional Partner Guardian:');
     console.log('- Type: partner');
 
-    await waitForKeyPress('Press any key to add partner guardian...');
+    await waitForKeyPress('Press any key to add partner guardian...', chalk.yellow);
 
     try {
       const partnerGuardian = await gridlock.addProfessionalGuardian({
@@ -228,25 +231,19 @@ async function runExample() {
       console.log('- Guardian Type:', partnerGuardian.guardian.type);
     } catch (error) {
       console.error('❌ Error adding Partner Guardian:', error);
-      if (await shouldContinueAfterError()) {
-        console.log('Continuing to next step despite error...');
-      } else {
-        throw error;
-      }
+      throw error;
     }
 
     // **************************************************************************************
     // STEP 5: CREATING A WALLET
     // **************************************************************************************
-    await waitForKeyPress();
-
     console.log(chalk.red('\n' + '*'.repeat(80)));
     console.log(chalk.red('STEP 5: CREATING A WALLET'));
     console.log(chalk.red('*'.repeat(80)));
     console.log('Creating a new wallet:');
     console.log(`- Blockchain: ${BLOCKCHAIN}`);
 
-    await waitForKeyPress('Press any key to create wallet...');
+    await waitForKeyPress('Press any key to create wallet...', chalk.red);
 
     // Declare wallet address variable outside the try block so it can be used in later steps
     let walletAddress: string | undefined;
@@ -264,18 +261,12 @@ async function runExample() {
       console.log('- Blockchain:', wallet?.blockchain);
     } catch (error) {
       console.error('❌ Error creating wallet:', error);
-      if (await shouldContinueAfterError()) {
-        console.log('Continuing to next step despite error...');
-      } else {
-        throw error;
-      }
+      throw error;
     }
 
     // **************************************************************************************
     // STEP 6: SIGNING A MESSAGE
     // **************************************************************************************
-    await waitForKeyPress();
-
     console.log(chalk.blue('\n' + '*'.repeat(80)));
     console.log(chalk.blue('STEP 6: SIGNING A MESSAGE'));
     console.log(chalk.blue('*'.repeat(80)));
@@ -284,7 +275,7 @@ async function runExample() {
     console.log('Signing the following message:');
     console.log(`"${message}"`);
 
-    await waitForKeyPress('Press any key to sign message...');
+    await waitForKeyPress('Press any key to sign message...', chalk.blue);
 
     try {
       // Use the wallet address from step 5 instead of creating a new wallet
@@ -306,15 +297,13 @@ async function runExample() {
       // **************************************************************************************
       // STEP 7: VERIFYING THE SIGNATURE
       // **************************************************************************************
-      await waitForKeyPress();
-
       console.log(chalk.green('\n' + '*'.repeat(80)));
       console.log(chalk.green('STEP 7: VERIFYING THE SIGNATURE'));
       console.log(chalk.green('*'.repeat(80)));
       console.log('Verifying signature for message:');
       console.log(`"${message}"`);
 
-      await waitForKeyPress('Press any key to verify signature...');
+      await waitForKeyPress('Press any key to verify signature...', chalk.green);
 
       const isVerified = await gridlock.verifySignature({
         email: USER_EMAIL,
@@ -327,18 +316,12 @@ async function runExample() {
       console.log('\n✅ Signature verification result:', isVerified ? 'VALID ✓' : 'INVALID ✗');
     } catch (error) {
       console.error('❌ Error during signing or verification:', error);
-      if (await shouldContinueAfterError()) {
-        console.log('Continuing to next step despite error...');
-      } else {
-        throw error;
-      }
+      throw error;
     }
 
     // **************************************************************************************
     // STEP 8: ACCOUNT RECOVERY
     // **************************************************************************************
-    await waitForKeyPress();
-
     console.log(chalk.hex('#FF8C00')('\n' + '*'.repeat(80)));
     console.log(chalk.hex('#FF8C00')('STEP 8: ACCOUNT RECOVERY'));
     console.log(chalk.hex('#FF8C00')('*'.repeat(80)));
@@ -346,7 +329,7 @@ async function runExample() {
     console.log(`- Email: ${USER_EMAIL}`);
     console.log(`- New Password: ${RECOVERY_PASSWORD}`);
 
-    await waitForKeyPress('Press any key to start recovery process...');
+    await waitForKeyPress('Press any key to start recovery process...', chalk.hex('#FF8C00'));
 
     try {
       console.log('\nInitiating account recovery...');
@@ -380,7 +363,6 @@ async function runExample() {
       // **************************************************************************************
       // STEP 9: VERIFY RECOVERY SUCCESS
       // **************************************************************************************
-      await waitForKeyPress();
 
       // Only proceed to Step 9 if Step 8 was successful
       console.log(chalk.hex('#9932CC')('\n' + '*'.repeat(80)));
@@ -395,7 +377,10 @@ async function runExample() {
       console.log(`- Using Email: ${USER_EMAIL}`);
       console.log(`- Using New Password: ${RECOVERY_PASSWORD}`); //this is an example program, so we're showing the password here
 
-      await waitForKeyPress('Press any key to verify recovery by signing a message...');
+      await waitForKeyPress(
+        'Press any key to verify recovery by signing a message...',
+        chalk.hex('#9932CC')
+      );
 
       // Check if wallet address is available
       if (!walletAddress) {
@@ -460,28 +445,13 @@ async function runExample() {
   }
 }
 
-// Function to ask if user wants to continue after an error
-async function shouldContinueAfterError(): Promise<boolean> {
-  // Even in auto mode, do not continue after errors
-  if (config.autoRun) {
-    console.log(chalk.red('[AUTO] Error detected - stopping execution.'));
-    console.log(
-      chalk.yellow('To run despite errors, use interactive mode with --interactive flag.')
-    );
-    return false;
-  }
-
-  const answer = await getUserInput(
-    'Would you like to continue to the next step despite the error? (y/n): '
-  );
-  return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
-}
-
 // Script initialization
 console.log('Starting Gridlock SDK example...');
 if (config.autoRun) {
   console.log(chalk.blue('[AUTO] Running in automatic mode - no user input required'));
+  runExample();
 } else {
   console.log(chalk.yellow('[INTERACTIVE] This example will proceed step by step with your input'));
+
+  runExample();
 }
-runExample();
