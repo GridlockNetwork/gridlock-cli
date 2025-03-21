@@ -9,6 +9,7 @@ import {
   startRecoveryInquire,
   confirmRecoveryInquire,
   saveCredentialsInquire,
+  transferOwnerInquire,
 } from './user.service.js';
 import { addGuardianInquire } from './guardian.service.js';
 import { showNetworkInquire } from './network.service.js';
@@ -180,6 +181,18 @@ program
       email: options.email || storedCredentials?.email,
       password: options.password || storedCredentials?.password,
       code: options.code,
+    });
+  });
+
+program
+  .command('transfer-owner')
+  .description('Transfer ownership of your account to this device')
+  .option('-e, --email <email>', 'User email (optional if credentials saved)')
+  .option('-p, --password <password>', 'User password (optional if credentials saved)')
+  .action(async (options) => {
+    await transferOwnerInquire({
+      email: options.email || storedCredentials?.email,
+      password: options.password || storedCredentials?.password,
     });
   });
 

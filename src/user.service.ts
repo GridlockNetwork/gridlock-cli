@@ -164,25 +164,25 @@ export const confirmRecoveryInquire = async ({
   await confirmRecovery({
     email: email as string,
     password: password as string,
-    recoveryCode: code as string,
+    encryptedRecoveryEmail: code as string,
   });
 };
 
 export const confirmRecovery = async ({
   email,
   password,
-  recoveryCode,
+  encryptedRecoveryEmail,
 }: {
   email: string;
   password: string;
-  recoveryCode: string;
+  encryptedRecoveryEmail: string;
 }) => {
   const spinner = ora('Confirming recovery...').start();
   try {
     await gridlock.confirmRecovery({
       email,
       password,
-      recoveryCode,
+      encryptedRecoveryEmail,
     });
     spinner.succeed('Recovery confirmed successfully.');
   } catch (error) {
@@ -234,5 +234,58 @@ export const saveCredentials = async ({ email, password }: { email: string; pass
     spinner.succeed(`Credentials saved for future use`);
   } catch (error) {
     spinner.fail('Failed to save credentials');
+  }
+};
+
+export const transferOwnerInquire = async ({
+  email,
+  password,
+}: {
+  email?: string;
+  password?: string;
+}) => {
+  console.log('Entered values:');
+  if (email) console.log(` Email: ${chalk.hex('#4A90E2')(email)}`);
+  if (password) console.log(` Password: ${chalk.hex('#4A90E2')('*******')}`);
+  console.log('\n');
+
+  if (!email) {
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'email', message: 'Enter your email:' },
+    ]);
+    email = answers.email;
+  }
+  if (!password) {
+    const answers = await inquirer.prompt([
+      { type: 'password', name: 'password', message: 'Enter your password:' },
+    ]);
+    password = answers.password;
+  }
+
+  await transferOwner({
+    email: email as string,
+    password: password as string,
+  });
+};
+
+/**
+ * Transfers ownership of a user's account to this device.
+ *
+ * @param {Object} params - The parameters for transferring ownership.
+ * @param {string} params.email - The email address of the user.
+ * @param {string} params.password - The password for the user's account.
+ * @returns {Promise<void>} A promise that resolves when ownership is transferred.
+ */
+export const transferOwner = async ({ email, password }: { email: string; password: string }) => {
+  const spinner = ora('Transferring ownership...').start();
+  try {
+    await gridlock.transferOwner({
+      email,
+      password,
+    });
+    spinner.succeed('Ownership successfully transferred to this device');
+  } catch (error) {
+    spinner.fail('Ownership transfer failed');
+    console.error(error);
   }
 };
