@@ -3,6 +3,9 @@ import { config } from './initGridlock.js';
 import { IGuardian } from 'gridlock-sdk/types';
 import chalk from 'chalk';
 import readline from 'readline';
+import path from 'path';
+import os from 'os';
+import fs from 'fs';
 
 // Process command line arguments
 // Check if --help or -h flag is provided
@@ -32,9 +35,9 @@ const rl = readline.createInterface({
   output: process.stdout,
 });
 
-// Function to wait for user to press any key to continue
+// Function to wait for user to press ENTER to continue
 const waitForKeyPress = async (
-  message: string = 'Press any key to continue to the next step...',
+  message: string = 'Press ENTER to continue to the next step...',
   color: (text: string) => string = chalk.yellow
 ): Promise<void> => {
   // If autoRun is enabled, don't wait for keypress
@@ -63,6 +66,7 @@ const waitForKeyPress = async (
         process.exit(0);
       }
 
+      // For any other key, resolve the promise
       resolve();
     });
   });
@@ -71,7 +75,18 @@ const waitForKeyPress = async (
 // Function to get user input
 const getUserInput = (prompt: string): Promise<string> => {
   return new Promise((resolve) => {
-    rl.question(prompt, (answer) => {
+    // Ensure stdin is in normal mode and paused
+    process.stdin.setRawMode(false);
+    process.stdin.pause();
+
+    // Create a new readline interface for this specific input
+    const inputRl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    inputRl.question(prompt, (answer) => {
+      inputRl.close();
       resolve(answer);
     });
   });
@@ -116,7 +131,7 @@ async function runExample() {
     console.log('- Debug Mode:', config.DEBUG_MODE ? 'Enabled' : 'Disabled');
 
     // Pause to let the user read configuration and begin when ready
-    await waitForKeyPress('Press any key to begin...', chalk.blue);
+    await waitForKeyPress('Press ENTER to begin...', chalk.blue);
 
     // **************************************************************************************
     // STEP 1: CREATING A NEW USER
@@ -124,12 +139,17 @@ async function runExample() {
     console.log(chalk.green('\n' + '*'.repeat(80)));
     console.log(chalk.green('STEP 1: CREATING A NEW USER'));
     console.log(chalk.green('*'.repeat(80)));
+    console.log(
+      chalk.grey(
+        `Manual command: gridlock create-user -n "${USER_NAME}" -e ${USER_EMAIL} -p ${USER_PASSWORD}`
+      )
+    );
     console.log('Creating user with the following details:');
     console.log(`- Name: ${USER_NAME}`);
     console.log(`- Email: ${USER_EMAIL}`);
     console.log(`- Password: ${USER_PASSWORD}`);
 
-    await waitForKeyPress('Press any key to create user...', chalk.green);
+    await waitForKeyPress('Press ENTER to create user...', chalk.green);
 
     try {
       const { user, authTokens } = await gridlock.createUser({
@@ -154,6 +174,11 @@ async function runExample() {
     console.log(chalk.cyan('\n' + '*'.repeat(80)));
     console.log(chalk.cyan('STEP 2: ADDING A CLOUD GUARDIAN'));
     console.log(chalk.cyan('*'.repeat(80)));
+    console.log(
+      chalk.grey(
+        `Manual command: gridlock add-guardian -e ${USER_EMAIL} -p ${USER_PASSWORD} -t cloud -o -n "${CLOUD_GUARDIAN.name}" -i ${CLOUD_GUARDIAN.nodeId} -ik ${CLOUD_GUARDIAN.publicKey} -ek ${CLOUD_GUARDIAN.e2ePublicKey}`
+      )
+    );
     console.log('Preparing Cloud Guardian data:');
 
     // Use the guardian data defined at the top of the file
@@ -164,7 +189,7 @@ async function runExample() {
     console.log('- Type:', guardianData.type);
     console.log('- Is Owner Guardian: Yes');
 
-    await waitForKeyPress('Press any key to add cloud guardian...', chalk.cyan);
+    await waitForKeyPress('Press ENTER to add cloud guardian...', chalk.cyan);
 
     try {
       const response = await gridlock.addGuardian({
@@ -188,10 +213,15 @@ async function runExample() {
     console.log(chalk.magenta('\n' + '*'.repeat(80)));
     console.log(chalk.magenta('STEP 3: ADDING A GRIDLOCK GUARDIAN'));
     console.log(chalk.magenta('*'.repeat(80)));
+    console.log(
+      chalk.grey(
+        `Manual command: gridlock add-guardian -e ${USER_EMAIL} -p ${USER_PASSWORD} -t gridlock`
+      )
+    );
     console.log('Adding a professional Gridlock Guardian:');
     console.log('- Type: gridlock');
 
-    await waitForKeyPress('Press any key to add gridlock guardian...', chalk.magenta);
+    await waitForKeyPress('Press ENTER to add gridlock guardian...', chalk.magenta);
 
     try {
       const response = await gridlock.addProfessionalGuardian({
@@ -214,10 +244,15 @@ async function runExample() {
     console.log(chalk.yellow('\n' + '*'.repeat(80)));
     console.log(chalk.yellow('STEP 4: ADDING A PARTNER GUARDIAN'));
     console.log(chalk.yellow('*'.repeat(80)));
+    console.log(
+      chalk.grey(
+        `Manual command: gridlock add-guardian -e ${USER_EMAIL} -p ${USER_PASSWORD} -t partner`
+      )
+    );
     console.log('Adding a professional Partner Guardian:');
     console.log('- Type: partner');
 
-    await waitForKeyPress('Press any key to add partner guardian...', chalk.yellow);
+    await waitForKeyPress('Press ENTER to add partner guardian...', chalk.yellow);
 
     try {
       const partnerGuardian = await gridlock.addProfessionalGuardian({
@@ -240,10 +275,15 @@ async function runExample() {
     console.log(chalk.red('\n' + '*'.repeat(80)));
     console.log(chalk.red('STEP 5: CREATING A WALLET'));
     console.log(chalk.red('*'.repeat(80)));
+    console.log(
+      chalk.grey(
+        `Manual command: gridlock create-wallet -e ${USER_EMAIL} -p ${USER_PASSWORD} -b ${BLOCKCHAIN}`
+      )
+    );
     console.log('Creating a new wallet:');
     console.log(`- Blockchain: ${BLOCKCHAIN}`);
 
-    await waitForKeyPress('Press any key to create wallet...', chalk.red);
+    await waitForKeyPress('Press ENTER to create wallet...', chalk.red);
 
     // Declare wallet address variable outside the try block so it can be used in later steps
     let walletAddress: string | undefined;
@@ -272,10 +312,15 @@ async function runExample() {
     console.log(chalk.blue('*'.repeat(80)));
 
     const message = 'This is a message to be signed';
+    console.log(
+      chalk.grey(
+        `Manual command: gridlock sign -e ${USER_EMAIL} -p ${USER_PASSWORD} -a ${walletAddress} -m "${message}"`
+      )
+    );
     console.log('Signing the following message:');
     console.log(`"${message}"`);
 
-    await waitForKeyPress('Press any key to sign message...', chalk.blue);
+    await waitForKeyPress('Press ENTER to sign message...', chalk.blue);
 
     try {
       // Use the wallet address from step 5 instead of creating a new wallet
@@ -300,10 +345,15 @@ async function runExample() {
       console.log(chalk.green('\n' + '*'.repeat(80)));
       console.log(chalk.green('STEP 7: VERIFYING THE SIGNATURE'));
       console.log(chalk.green('*'.repeat(80)));
+      console.log(
+        chalk.grey(
+          `Manual command: gridlock verify -e ${USER_EMAIL} -p ${USER_PASSWORD} -m "${message}" -a ${walletAddress} -s ${signature.signature}`
+        )
+      );
       console.log('Verifying signature for message:');
       console.log(`"${message}"`);
 
-      await waitForKeyPress('Press any key to verify signature...', chalk.green);
+      await waitForKeyPress('Press ENTER to verify signature...', chalk.green);
 
       const isVerified = await gridlock.verifySignature({
         email: USER_EMAIL,
@@ -320,16 +370,59 @@ async function runExample() {
     }
 
     // **************************************************************************************
-    // STEP 8: ACCOUNT RECOVERY
+    // STEP 8: SIMULATING NEW DEVICE
+    // **************************************************************************************
+    console.log(chalk.hex('#FF1493')('\n' + '*'.repeat(80)));
+    console.log(chalk.hex('#FF1493')('STEP 8: SIMULATING NEW DEVICE'));
+    console.log(chalk.hex('#FF1493')('*'.repeat(80)));
+    console.log(chalk.grey('Manual command: find ~/.gridlock-cli -type f -delete'));
+    console.log('Simulating a new device by removing all local data:');
+    console.log('- Removing stored user data');
+    console.log('- Removing stored guardian data');
+    console.log('- Removing stored authentication data');
+
+    await waitForKeyPress('Press ENTER to remove local data...', chalk.hex('#FF1493'));
+
+    try {
+      const gridlockDir = path.join(os.homedir(), '.gridlock-cli');
+      if (fs.existsSync(gridlockDir)) {
+        // Recursively find and delete all files while preserving directories
+        function deleteFilesRecursively(dir: string) {
+          const files = fs.readdirSync(dir);
+          for (const file of files) {
+            const filePath = path.join(dir, file);
+            if (fs.lstatSync(filePath).isDirectory()) {
+              deleteFilesRecursively(filePath);
+            } else {
+              fs.unlinkSync(filePath);
+            }
+          }
+        }
+
+        deleteFilesRecursively(gridlockDir);
+        console.log('\n✅ Local data removed successfully!');
+      } else {
+        console.log('\nℹ️ No local data found to remove.');
+      }
+    } catch (error) {
+      console.error('❌ Error removing local data:', error);
+      throw error;
+    }
+
+    // **************************************************************************************
+    // STEP 9: ACCOUNT RECOVERY
     // **************************************************************************************
     console.log(chalk.hex('#FF8C00')('\n' + '*'.repeat(80)));
-    console.log(chalk.hex('#FF8C00')('STEP 8: ACCOUNT RECOVERY'));
+    console.log(chalk.hex('#FF8C00')('STEP 9: ACCOUNT RECOVERY'));
     console.log(chalk.hex('#FF8C00')('*'.repeat(80)));
+    console.log(
+      chalk.grey(`Manual command: gridlock start-recovery -e ${USER_EMAIL} -p ${RECOVERY_PASSWORD}`)
+    );
     console.log('Demonstrating account recovery process:');
     console.log(`- Email: ${USER_EMAIL}`);
     console.log(`- New Password: ${RECOVERY_PASSWORD}`);
 
-    await waitForKeyPress('Press any key to start recovery process...', chalk.hex('#FF8C00'));
+    await waitForKeyPress('Press ENTER to start recovery process...', chalk.hex('#FF8C00'));
 
     try {
       console.log('\nInitiating account recovery...');
@@ -360,25 +453,50 @@ async function runExample() {
       console.log('- Account has been recovered with the new password');
       console.log('- You can now access your wallet and guardians with the new credentials');
 
-      // **************************************************************************************
-      // STEP 9: VERIFY RECOVERY SUCCESS
-      // **************************************************************************************
+      // Wait for remote file system operations to complete
+      console.log('\nWaiting for remote operations to complete...');
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // Only proceed to Step 9 if Step 8 was successful
+      // Immediately transfer ownership after recovery confirmation
+      console.log('\nTransferring ownership to this device...');
+      try {
+        await gridlock.transferOwner({
+          email: USER_EMAIL,
+          password: RECOVERY_PASSWORD,
+        });
+
+        console.log('\n✅ Ownership transferred successfully!');
+        console.log('- This device is now the owner of the account');
+        console.log('- Recovery process is complete');
+      } catch (error) {
+        console.error('❌ Error transferring ownership:', error);
+        throw error;
+      }
+
+      console.log('\nStep 9 (Account Recovery and Ownership Transfer) completed.');
+
+      // **************************************************************************************
+      // STEP 10: VERIFY RECOVERY SUCCESS
+      // **************************************************************************************
       console.log(chalk.hex('#9932CC')('\n' + '*'.repeat(80)));
-      console.log(chalk.hex('#9932CC')('STEP 9: VERIFY RECOVERY SUCCESS'));
+      console.log(chalk.hex('#9932CC')('STEP 10: VERIFY RECOVERY SUCCESS'));
       console.log(chalk.hex('#9932CC')('*'.repeat(80)));
+
+      const recoveryTestMessage = 'This message confirms successful account recovery';
+      console.log(
+        chalk.grey(
+          `Manual command: gridlock sign -e ${USER_EMAIL} -p ${RECOVERY_PASSWORD} -a ${walletAddress} -m "${recoveryTestMessage}"`
+        )
+      );
       console.log(
         'Confirming successful recovery by signing and verifying a message with new credentials:'
       );
-
-      const recoveryTestMessage = 'This message confirms successful account recovery';
       console.log(`- Test Message: "${recoveryTestMessage}"`);
       console.log(`- Using Email: ${USER_EMAIL}`);
-      console.log(`- Using New Password: ${RECOVERY_PASSWORD}`); //this is an example program, so we're showing the password here
+      console.log(`- Using New Password: ${RECOVERY_PASSWORD}`);
 
       await waitForKeyPress(
-        'Press any key to verify recovery by signing a message...',
+        'Press ENTER to verify recovery by signing a message...',
         chalk.hex('#9932CC')
       );
 
@@ -388,7 +506,6 @@ async function runExample() {
       }
 
       console.log('\nSigning message with recovered account...');
-      await new Promise((resolve) => setTimeout(resolve, 3000)); //delay to ensure fs operations are complete on signing node
 
       // Sign message with new credentials
       const recoverySignature = await gridlock.signTransaction({
@@ -422,19 +539,17 @@ async function runExample() {
         console.log('\n🎉 ACCOUNT RECOVERY SUCCESSFUL! 🎉');
         console.log('- Your account has been fully recovered with the new password');
         console.log('- You have full access to your wallet and can sign transactions');
+
+        console.log('\n' + '='.repeat(80));
+        console.log(chalk.green('Example Completed'));
+        console.log('='.repeat(80));
       } else {
         console.log('\n⚠️ Recovery verification failed. Please check your credentials.');
       }
-
-      console.log('\nStep 9 (Verify Recovery Success) completed.');
     } catch (error) {
       console.error('❌ Error during recovery process:', error);
       console.log('\nRecovery example could not be completed due to an error.');
     }
-
-    console.log('\n' + '='.repeat(80));
-    console.log('EXAMPLE COMPLETED');
-    console.log('='.repeat(80));
   } catch (error) {
     console.error('\n❌ Example terminated due to an error:', error);
   } finally {

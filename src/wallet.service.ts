@@ -65,7 +65,7 @@ export const signTransactionInquire = async (options: {
   }
   if (!address) {
     const answers = await inquirer.prompt([
-      { type: 'input', name: 'address', message: 'Enter the address:' },
+      { type: 'input', name: 'address', message: 'Enter the wallet address:' },
     ]);
     address = answers.address as string;
   }
