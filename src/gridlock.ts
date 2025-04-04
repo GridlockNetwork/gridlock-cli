@@ -184,12 +184,12 @@ program
   .description('Confirm recovery using the received recovery code')
   .option('-e, --email <email>', 'User email (optional if credentials saved)')
   .option('-p, --password <password>', 'User password (optional if credentials saved)')
-  .option('-c, --code <code>', 'Recovery confirmation code received by email')
+  .option('-r, --recoveryBundle <recoveryBundle>', 'Recovery bundle received by email')
   .action(async (options) => {
     await confirmRecoveryInquire({
       email: options.email || storedCredentials?.email,
       password: options.password || storedCredentials?.password,
-      code: options.code,
+      recoveryBundle: options.recoveryBundle,
     });
   });
 

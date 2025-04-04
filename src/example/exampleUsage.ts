@@ -42,7 +42,6 @@ const waitForKeyPress = async (
 ): Promise<void> => {
   // If autoRun is enabled, don't wait for keypress
   if (config.autoRun) {
-    console.log('\n' + chalk.blue('[AUTO] Proceeding to next step automatically...'));
     return;
   }
 
@@ -134,14 +133,28 @@ async function runExample() {
     await waitForKeyPress('Press ENTER to begin...', chalk.blue);
 
     // **************************************************************************************
-    // STEP 1: CREATING A NEW USER
+    // STEP 1: INITIALIZE SDK
     // **************************************************************************************
-    console.log(chalk.green('\n' + '*'.repeat(80)));
-    console.log(chalk.green('STEP 1: CREATING A NEW USER'));
-    console.log(chalk.green('*'.repeat(80)));
+    console.log(chalk.hex('#4CAF50')('\n' + '*'.repeat(80)));
+    console.log(chalk.hex('#4CAF50')('STEP 1: INITIALIZE SDK'));
+    console.log(chalk.hex('#4CAF50')('*'.repeat(80)));
+    console.log('SDK initialized with the following configuration:');
+    console.log(
+      `- Auto Run: ${config.autoRun ? chalk.green('Enabled') : chalk.yellow('Disabled')}`
+    );
+    console.log('- API Key:', config.API_KEY);
+    console.log('- Base URL:', config.BASE_URL);
+    console.log('- Debug Mode:', config.DEBUG_MODE ? 'Enabled' : 'Disabled');
+
+    // **************************************************************************************
+    // STEP 2: CREATING A NEW USER
+    // **************************************************************************************
+    console.log(chalk.hex('#2196F3')('\n' + '*'.repeat(80)));
+    console.log(chalk.hex('#2196F3')('STEP 2: CREATING A NEW USER'));
+    console.log(chalk.hex('#2196F3')('*'.repeat(80)));
     console.log(
       chalk.grey(
-        `Manual command: gridlock create-user -n "${USER_NAME}" -e ${USER_EMAIL} -p ${USER_PASSWORD}`
+        `CLI command: gridlock create-user -n "${USER_NAME}" -e ${USER_EMAIL} -p ${USER_PASSWORD}`
       )
     );
     console.log('Creating user with the following details:');
@@ -149,7 +162,7 @@ async function runExample() {
     console.log(`- Email: ${USER_EMAIL}`);
     console.log(`- Password: ${USER_PASSWORD}`);
 
-    await waitForKeyPress('Press ENTER to create user...', chalk.green);
+    await waitForKeyPress('Press ENTER to create user...', chalk.hex('#4CAF50'));
 
     try {
       const { user, authTokens } = await gridlock.createUser({
@@ -169,14 +182,14 @@ async function runExample() {
     }
 
     // **************************************************************************************
-    // STEP 2: ADDING A CLOUD GUARDIAN
+    // STEP 3: ADDING A CLOUD GUARDIAN
     // **************************************************************************************
-    console.log(chalk.cyan('\n' + '*'.repeat(80)));
-    console.log(chalk.cyan('STEP 2: ADDING A CLOUD GUARDIAN'));
-    console.log(chalk.cyan('*'.repeat(80)));
+    console.log(chalk.hex('#0D47A1')('\n' + '*'.repeat(80)));
+    console.log(chalk.hex('#0D47A1')('STEP 3: ADDING A CLOUD GUARDIAN'));
+    console.log(chalk.hex('#0D47A1')('*'.repeat(80)));
     console.log(
       chalk.grey(
-        `Manual command: gridlock add-guardian -e ${USER_EMAIL} -p ${USER_PASSWORD} -t cloud -o -n "${CLOUD_GUARDIAN.name}" -i ${CLOUD_GUARDIAN.nodeId} -ik ${CLOUD_GUARDIAN.publicKey} -ek ${CLOUD_GUARDIAN.e2ePublicKey}`
+        `CLI command: gridlock add-guardian -e ${USER_EMAIL} -p ${USER_PASSWORD} -t cloud -o -n "${CLOUD_GUARDIAN.name}" -i ${CLOUD_GUARDIAN.nodeId} -ik ${CLOUD_GUARDIAN.publicKey} -ek ${CLOUD_GUARDIAN.e2ePublicKey}`
       )
     );
     console.log('Preparing Cloud Guardian data:');
@@ -189,7 +202,7 @@ async function runExample() {
     console.log('- Type:', guardianData.type);
     console.log('- Is Owner Guardian: Yes');
 
-    await waitForKeyPress('Press ENTER to add cloud guardian...', chalk.cyan);
+    await waitForKeyPress('Press ENTER to add cloud guardian...', chalk.hex('#2196F3'));
 
     try {
       const response = await gridlock.addGuardian({
@@ -208,20 +221,20 @@ async function runExample() {
     }
 
     // **************************************************************************************
-    // STEP 3: ADDING A GRIDLOCK GUARDIAN
+    // STEP 4: ADDING A GRIDLOCK GUARDIAN
     // **************************************************************************************
-    console.log(chalk.magenta('\n' + '*'.repeat(80)));
-    console.log(chalk.magenta('STEP 3: ADDING A GRIDLOCK GUARDIAN'));
-    console.log(chalk.magenta('*'.repeat(80)));
+    console.log(chalk.hex('#9C27B0')('\n' + '*'.repeat(80)));
+    console.log(chalk.hex('#9C27B0')('STEP 4: ADDING A GRIDLOCK GUARDIAN'));
+    console.log(chalk.hex('#9C27B0')('*'.repeat(80)));
     console.log(
       chalk.grey(
-        `Manual command: gridlock add-guardian -e ${USER_EMAIL} -p ${USER_PASSWORD} -t gridlock`
+        `CLI command: gridlock add-guardian -e ${USER_EMAIL} -p ${USER_PASSWORD} -t gridlock`
       )
     );
     console.log('Adding a professional Gridlock Guardian:');
     console.log('- Type: gridlock');
 
-    await waitForKeyPress('Press ENTER to add gridlock guardian...', chalk.magenta);
+    await waitForKeyPress('Press ENTER to add gridlock guardian...', chalk.hex('#0D47A1'));
 
     try {
       const response = await gridlock.addProfessionalGuardian({
@@ -239,20 +252,20 @@ async function runExample() {
     }
 
     // **************************************************************************************
-    // STEP 4: ADDING A PARTNER GUARDIAN
+    // STEP 5: ADDING A PARTNER GUARDIAN
     // **************************************************************************************
-    console.log(chalk.yellow('\n' + '*'.repeat(80)));
-    console.log(chalk.yellow('STEP 4: ADDING A PARTNER GUARDIAN'));
-    console.log(chalk.yellow('*'.repeat(80)));
+    console.log(chalk.hex('#E91E63')('\n' + '*'.repeat(80)));
+    console.log(chalk.hex('#E91E63')('STEP 5: ADDING A PARTNER GUARDIAN'));
+    console.log(chalk.hex('#E91E63')('*'.repeat(80)));
     console.log(
       chalk.grey(
-        `Manual command: gridlock add-guardian -e ${USER_EMAIL} -p ${USER_PASSWORD} -t partner`
+        `CLI command: gridlock add-guardian -e ${USER_EMAIL} -p ${USER_PASSWORD} -t partner`
       )
     );
     console.log('Adding a professional Partner Guardian:');
     console.log('- Type: partner');
 
-    await waitForKeyPress('Press ENTER to add partner guardian...', chalk.yellow);
+    await waitForKeyPress('Press ENTER to add partner guardian...', chalk.hex('#9C27B0'));
 
     try {
       const partnerGuardian = await gridlock.addProfessionalGuardian({
@@ -270,20 +283,20 @@ async function runExample() {
     }
 
     // **************************************************************************************
-    // STEP 5: CREATING A WALLET
+    // STEP 6: CREATING A WALLET
     // **************************************************************************************
-    console.log(chalk.red('\n' + '*'.repeat(80)));
-    console.log(chalk.red('STEP 5: CREATING A WALLET'));
-    console.log(chalk.red('*'.repeat(80)));
+    console.log(chalk.hex('#FF5722')('\n' + '*'.repeat(80)));
+    console.log(chalk.hex('#FF5722')('STEP 6: CREATING A WALLET'));
+    console.log(chalk.hex('#FF5722')('*'.repeat(80)));
     console.log(
       chalk.grey(
-        `Manual command: gridlock create-wallet -e ${USER_EMAIL} -p ${USER_PASSWORD} -b ${BLOCKCHAIN}`
+        `CLI command: gridlock create-wallet -e ${USER_EMAIL} -p ${USER_PASSWORD} -b ${BLOCKCHAIN}`
       )
     );
     console.log('Creating a new wallet:');
     console.log(`- Blockchain: ${BLOCKCHAIN}`);
 
-    await waitForKeyPress('Press ENTER to create wallet...', chalk.red);
+    await waitForKeyPress('Press ENTER to create wallet...', chalk.hex('#E91E63'));
 
     // Declare wallet address variable outside the try block so it can be used in later steps
     let walletAddress: string | undefined;
@@ -305,22 +318,22 @@ async function runExample() {
     }
 
     // **************************************************************************************
-    // STEP 6: SIGNING A MESSAGE
+    // STEP 7: SIGNING A MESSAGE
     // **************************************************************************************
-    console.log(chalk.blue('\n' + '*'.repeat(80)));
-    console.log(chalk.blue('STEP 6: SIGNING A MESSAGE'));
-    console.log(chalk.blue('*'.repeat(80)));
+    console.log(chalk.hex('#FFC107')('\n' + '*'.repeat(80)));
+    console.log(chalk.hex('#FFC107')('STEP 7: SIGNING A MESSAGE'));
+    console.log(chalk.hex('#FFC107')('*'.repeat(80)));
 
     const message = 'This is a message to be signed';
     console.log(
       chalk.grey(
-        `Manual command: gridlock sign -e ${USER_EMAIL} -p ${USER_PASSWORD} -a ${walletAddress} -m "${message}"`
+        `CLI command: gridlock sign -e ${USER_EMAIL} -p ${USER_PASSWORD} -a ${walletAddress} -m "${message}"`
       )
     );
     console.log('Signing the following message:');
     console.log(`"${message}"`);
 
-    await waitForKeyPress('Press ENTER to sign message...', chalk.blue);
+    await waitForKeyPress('Press ENTER to sign message...', chalk.hex('#FF5722'));
 
     try {
       // Use the wallet address from step 5 instead of creating a new wallet
@@ -340,20 +353,20 @@ async function runExample() {
       console.log('- Wallet Address Used:', walletAddress);
 
       // **************************************************************************************
-      // STEP 7: VERIFYING THE SIGNATURE
+      // STEP 8: VERIFYING THE SIGNATURE
       // **************************************************************************************
-      console.log(chalk.green('\n' + '*'.repeat(80)));
-      console.log(chalk.green('STEP 7: VERIFYING THE SIGNATURE'));
-      console.log(chalk.green('*'.repeat(80)));
+      console.log(chalk.hex('#607D8B')('\n' + '*'.repeat(80)));
+      console.log(chalk.hex('#607D8B')('STEP 8: VERIFYING THE SIGNATURE'));
+      console.log(chalk.hex('#607D8B')('*'.repeat(80)));
       console.log(
         chalk.grey(
-          `Manual command: gridlock verify -e ${USER_EMAIL} -p ${USER_PASSWORD} -m "${message}" -a ${walletAddress} -s ${signature.signature}`
+          `CLI command: gridlock verify -e ${USER_EMAIL} -p ${USER_PASSWORD} -m "${message}" -a ${walletAddress} -s ${signature.signature}`
         )
       );
       console.log('Verifying signature for message:');
       console.log(`"${message}"`);
 
-      await waitForKeyPress('Press ENTER to verify signature...', chalk.green);
+      await waitForKeyPress('Press ENTER to verify signature...', chalk.hex('#607D8B'));
 
       const isVerified = await gridlock.verifySignature({
         email: USER_EMAIL,
@@ -370,18 +383,18 @@ async function runExample() {
     }
 
     // **************************************************************************************
-    // STEP 8: SIMULATING NEW DEVICE
+    // STEP 9: SIMULATING NEW DEVICE
     // **************************************************************************************
-    console.log(chalk.hex('#FF1493')('\n' + '*'.repeat(80)));
-    console.log(chalk.hex('#FF1493')('STEP 8: SIMULATING NEW DEVICE'));
-    console.log(chalk.hex('#FF1493')('*'.repeat(80)));
-    console.log(chalk.grey('Manual command: find ~/.gridlock-cli -type f -delete'));
+    console.log(chalk.hex('#00BCD4')('\n' + '*'.repeat(80)));
+    console.log(chalk.hex('#00BCD4')('STEP 9: SIMULATING NEW DEVICE'));
+    console.log(chalk.hex('#00BCD4')('*'.repeat(80)));
+    console.log(chalk.grey('CLI command: find ~/.gridlock-cli -type f -delete'));
     console.log('Simulating a new device by removing all local data:');
     console.log('- Removing stored user data');
     console.log('- Removing stored guardian data');
     console.log('- Removing stored authentication data');
 
-    await waitForKeyPress('Press ENTER to remove local data...', chalk.hex('#FF1493'));
+    await waitForKeyPress('Press ENTER to remove local data...', chalk.hex('#607D8B'));
 
     try {
       const gridlockDir = path.join(os.homedir(), '.gridlock-cli');
@@ -410,19 +423,19 @@ async function runExample() {
     }
 
     // **************************************************************************************
-    // STEP 9: ACCOUNT RECOVERY
+    // STEP 10: ACCOUNT RECOVERY
     // **************************************************************************************
-    console.log(chalk.hex('#FF8C00')('\n' + '*'.repeat(80)));
-    console.log(chalk.hex('#FF8C00')('STEP 9: ACCOUNT RECOVERY'));
-    console.log(chalk.hex('#FF8C00')('*'.repeat(80)));
+    console.log(chalk.hex('#3F51B5')('\n' + '*'.repeat(80)));
+    console.log(chalk.hex('#3F51B5')('STEP 10: ACCOUNT RECOVERY'));
+    console.log(chalk.hex('#3F51B5')('*'.repeat(80)));
     console.log(
-      chalk.grey(`Manual command: gridlock start-recovery -e ${USER_EMAIL} -p ${RECOVERY_PASSWORD}`)
+      chalk.grey(`CLI command: gridlock start-recovery -e ${USER_EMAIL} -p ${RECOVERY_PASSWORD}`)
     );
     console.log('Demonstrating account recovery process:');
     console.log(`- Email: ${USER_EMAIL}`);
     console.log(`- New Password: ${RECOVERY_PASSWORD}`);
 
-    await waitForKeyPress('Press ENTER to start recovery process...', chalk.hex('#FF8C00'));
+    await waitForKeyPress('Press ENTER to start recovery process...', chalk.hex('#00BCD4'));
 
     try {
       console.log('\nInitiating account recovery...');
@@ -436,9 +449,22 @@ async function runExample() {
       console.log(`- A verification code has been sent to ${USER_EMAIL}`);
 
       // Wait for user to input the verification code
-      const encryptedRecoveryEmail = await getUserInput(
+      const recoveryBundle = await getUserInput(
         '\nPlease check your email and enter the verification code: '
       );
+
+      // **************************************************************************************
+      // STEP 11: CONFIRM RECOVERY
+      // **************************************************************************************
+      console.log(chalk.hex('#673AB7')('\n' + '*'.repeat(80)));
+      console.log(chalk.hex('#673AB7')('STEP 11: CONFIRM RECOVERY'));
+      console.log(chalk.hex('#673AB7')('*'.repeat(80)));
+      console.log(
+        chalk.grey(
+          `CLI command: gridlock confirm-recovery -e ${USER_EMAIL} -p ${RECOVERY_PASSWORD} -r ${recoveryBundle}`
+        )
+      );
+      console.log('Confirming recovery with verification code...');
 
       // Confirm recovery with the code
       console.log('\nConfirming recovery with provided code...');
@@ -446,7 +472,7 @@ async function runExample() {
       await gridlock.confirmRecovery({
         email: USER_EMAIL,
         password: RECOVERY_PASSWORD,
-        encryptedRecoveryEmail,
+        recoveryBundle,
       });
 
       console.log('\n✅ Recovery confirmed successfully!');
@@ -457,8 +483,19 @@ async function runExample() {
       console.log('\nWaiting for remote operations to complete...');
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // Immediately transfer ownership after recovery confirmation
-      console.log('\nTransferring ownership to this device...');
+      // **************************************************************************************
+      // STEP 12: TRANSFER OWNERSHIP
+      // **************************************************************************************
+      console.log(chalk.hex('#8BC34A')('\n' + '*'.repeat(80)));
+      console.log(chalk.hex('#8BC34A')('STEP 12: TRANSFER OWNERSHIP'));
+      console.log(chalk.hex('#8BC34A')('*'.repeat(80)));
+      console.log(
+        chalk.grey(`CLI command: gridlock transfer-owner -e ${USER_EMAIL} -p ${RECOVERY_PASSWORD}`)
+      );
+      console.log('Transferring ownership to this device...');
+
+      await waitForKeyPress('Press ENTER to transfer ownership...', chalk.hex('#673AB7'));
+
       try {
         await gridlock.transferOwner({
           email: USER_EMAIL,
@@ -473,31 +510,27 @@ async function runExample() {
         throw error;
       }
 
-      console.log('\nStep 9 (Account Recovery and Ownership Transfer) completed.');
-
       // **************************************************************************************
-      // STEP 10: VERIFY RECOVERY SUCCESS
+      // STEP 13: POST RECOVERY SIGNING
       // **************************************************************************************
-      console.log(chalk.hex('#9932CC')('\n' + '*'.repeat(80)));
-      console.log(chalk.hex('#9932CC')('STEP 10: VERIFY RECOVERY SUCCESS'));
-      console.log(chalk.hex('#9932CC')('*'.repeat(80)));
+      console.log(chalk.hex('#CDDC39')('\n' + '*'.repeat(80)));
+      console.log(chalk.hex('#CDDC39')('STEP 13: POST RECOVERY SIGNING'));
+      console.log(chalk.hex('#CDDC39')('*'.repeat(80)));
 
       const recoveryTestMessage = 'This message confirms successful account recovery';
       console.log(
         chalk.grey(
-          `Manual command: gridlock sign -e ${USER_EMAIL} -p ${RECOVERY_PASSWORD} -a ${walletAddress} -m "${recoveryTestMessage}"`
+          `CLI command: gridlock sign -e ${USER_EMAIL} -p ${RECOVERY_PASSWORD} -a ${walletAddress} -m "${recoveryTestMessage}"`
         )
       );
-      console.log(
-        'Confirming successful recovery by signing and verifying a message with new credentials:'
-      );
+      console.log('Confirming successful recovery by signing a message with new credentials:');
       console.log(`- Test Message: "${recoveryTestMessage}"`);
       console.log(`- Using Email: ${USER_EMAIL}`);
       console.log(`- Using New Password: ${RECOVERY_PASSWORD}`);
 
       await waitForKeyPress(
         'Press ENTER to verify recovery by signing a message...',
-        chalk.hex('#9932CC')
+        chalk.hex('#8BC34A')
       );
 
       // Check if wallet address is available
@@ -519,8 +552,18 @@ async function runExample() {
       console.log('- Signature:', recoverySignature.signature.substring(0, 20) + '...');
       console.log('- Wallet Address Used:', walletAddress);
 
-      // Verify signature with new credentials
-      console.log('\nVerifying signature with recovered account...');
+      // **************************************************************************************
+      // STEP 14: POST RECOVERY VERIFICATION
+      // **************************************************************************************
+      console.log(chalk.hex('#795548')('\n' + '*'.repeat(80)));
+      console.log(chalk.hex('#795548')('STEP 14: POST RECOVERY VERIFICATION'));
+      console.log(chalk.hex('#795548')('*'.repeat(80)));
+      console.log(
+        chalk.grey(
+          `CLI command: gridlock verify -e ${USER_EMAIL} -p ${RECOVERY_PASSWORD} -m "${recoveryTestMessage}" -a ${walletAddress} -s ${recoverySignature.signature}`
+        )
+      );
+      console.log('Verifying signature with recovered account...');
 
       const isRecoveryVerified = await gridlock.verifySignature({
         email: USER_EMAIL,
@@ -540,9 +583,9 @@ async function runExample() {
         console.log('- Your account has been fully recovered with the new password');
         console.log('- You have full access to your wallet and can sign transactions');
 
-        console.log('\n' + '='.repeat(80));
-        console.log(chalk.green('Example Completed'));
-        console.log('='.repeat(80));
+        console.log(chalk.hex('#4CAF50')('\n' + '*'.repeat(80)));
+        console.log(chalk.hex('#4CAF50')('Example Completed'));
+        console.log(chalk.hex('#4CAF50')('*'.repeat(80)));
       } else {
         console.log('\n⚠️ Recovery verification failed. Please check your credentials.');
       }

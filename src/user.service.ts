@@ -130,16 +130,16 @@ export const startRecovery = async ({ email, password }: { email: string; passwo
 export const confirmRecoveryInquire = async ({
   email,
   password,
-  code,
+  recoveryBundle,
 }: {
   email?: string;
   password?: string;
-  code?: string;
+  recoveryBundle?: string;
 }) => {
   console.log('Entered values:');
   if (email) console.log(` Email: ${chalk.hex('#4A90E2')(email)}`);
   if (password) console.log(` Password: ${chalk.hex('#4A90E2')('*******')}`);
-  if (code) console.log(` Recovery Code: ${chalk.hex('#4A90E2')(code)}`);
+  if (recoveryBundle) console.log(` Recovery Bundle: ${chalk.hex('#4A90E2')(recoveryBundle)}`);
   console.log('\n');
 
   if (!email) {
@@ -154,35 +154,35 @@ export const confirmRecoveryInquire = async ({
     ]);
     password = answers.password;
   }
-  if (!code) {
+  if (!recoveryBundle) {
     const answers = await inquirer.prompt([
-      { type: 'input', name: 'code', message: 'Enter your recovery code:' },
+      { type: 'input', name: 'recoveryBundle', message: 'Enter your recovery bundle:' },
     ]);
-    code = answers.code;
+    recoveryBundle = answers.recoveryBundle;
   }
 
   await confirmRecovery({
     email: email as string,
     password: password as string,
-    encryptedRecoveryEmail: code as string,
+    recoveryBundle: recoveryBundle as string,
   });
 };
 
 export const confirmRecovery = async ({
   email,
   password,
-  encryptedRecoveryEmail,
+  recoveryBundle,
 }: {
   email: string;
   password: string;
-  encryptedRecoveryEmail: string;
+  recoveryBundle: string;
 }) => {
   const spinner = ora('Confirming recovery...').start();
   try {
     await gridlock.confirmRecovery({
       email,
       password,
-      encryptedRecoveryEmail,
+      recoveryBundle,
     });
     spinner.succeed('Recovery confirmed successfully.');
   } catch (error) {
