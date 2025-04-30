@@ -1,0 +1,95 @@
+x-default-node: &default-node
+  restart: always
+  image: gridlocknetwork/guardian-node:latest
+  volumes:
+    - ./storage:/app/storage
+    - ./node.db:/var/lib/gridlock/node/node.db
+  networks:
+    - gridlock-net
+  depends_on:
+    mongodb:
+      condition: service_healthy
+    nats:
+      condition: service_healthy
+    orch-node:
+      condition: service_started
+
+services:
+  # Only three nodes are necessary for a minimal functional setup
+  node1:
+    <<: *default-node
+    container_name: guardian-node-1
+    volumes:
+      - ./storage/nodes/1:/var/lib/gridlock/node
+
+  node2:
+    <<: *default-node
+    container_name: guardian-node-2
+    volumes:
+      - ./storage/nodes/2:/var/lib/gridlock/node
+
+  node3:
+    <<: *default-node
+    container_name: guardian-node-3
+    volumes:
+      - ./storage/nodes/3:/var/lib/gridlock/node
+
+  # Orchestration Node
+  orch-node:
+    image: gridlocknetwork/orch-node:latest
+    container_name: orch-node
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./example.env:/app/.env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks:
+      - gridlock-net
+
+  # MongoDB
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    command: ["--quiet", "--logpath=/dev/null"]
+    networks:
+      - gridlock-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # NATS
+  nats:
+    image: nats:latest
+    container_name: nats-main
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    networks:
+      - gridlock-net
+    healthcheck:
+      test: ["CMD", "/nats-server", "--help"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  gridlock-net:
+    external: true
+    name: gridlock-net
+    labels:
+      com.docker.compose.network: gridlock-net
+
+volumes:
+  mongodb_data: 
