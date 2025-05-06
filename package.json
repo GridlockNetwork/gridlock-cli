@@ -36,7 +36,7 @@
     "hi-base32": "^0.5.1",
     "inquirer": "^12.3.0",
     "libsodium-wrappers": "^0.7.15",
-    "mongodb": "^6.12.0",
+    "mongodb": "^6.3.0",
     "nats": "^2.29.1",
     "ora": "^8.1.1",
     "qrcode-terminal": "^0.12.0",
