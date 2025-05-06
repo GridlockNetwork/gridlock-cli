@@ -35,7 +35,7 @@ program
     'after',
     `
 Additional Commands:
-  run-example [options]       Run the Gridlock SDK example
+  run-example [options]       Run the Gridlock SDK demo example
                               Use 'gridlock run-example --help' for more information`
   )
   .hook('preAction', async (thisCommand) => {
