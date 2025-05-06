@@ -4,6 +4,12 @@
   "description": "Gridlock CLI",
   "main": "index.js",
   "type": "module",
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
   "bin": {
     "gridlock": "./bin/gridlock.js"
   },
