@@ -9,15 +9,14 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 
 // Load environment variables
-const envPath = path.join(process.cwd(), '.env');
+const envPath = path.join(process.cwd(), 'demo.env');
 if (!fs.existsSync(envPath)) {
-  console.error(chalk.red('\n❌ No .env file found!'));
-  console.error(chalk.yellow('\nPlease create a .env file in the src/example directory.'));
-  console.error(chalk.yellow('You can copy demo.env as a template:'));
-  console.error(chalk.grey('cp src/example/demo.env src/example/.env'));
+  console.error(chalk.red('\n❌ No demo.env file found!'));
+  console.error(chalk.yellow('\nPlease ensure demo.env exists in the root directory.'));
   process.exit(1);
 }
 
+console.log(chalk.green('\n✅ Found demo.env file at:'), chalk.cyan(envPath));
 dotenv.config({ path: envPath });
 
 // **************************************************************************************
@@ -54,7 +53,7 @@ if (missingVars.length > 0) {
     console.error(chalk.yellow(`- ${varName}`));
   });
   console.error(
-    chalk.yellow('\nPlease check your .env file and ensure all required variables are set.')
+    chalk.yellow('\nPlease check your demo.env file and ensure all required variables are set.')
   );
   process.exit(1);
 }
@@ -101,7 +100,9 @@ try {
   console.error(
     chalk.yellow(error instanceof Error ? error.message : 'Invalid guardian configuration')
   );
-  console.error(chalk.yellow('\nPlease ensure your .env file contains a valid GUARDIANS array.'));
+  console.error(
+    chalk.yellow('\nPlease ensure your demo.env file contains a valid GUARDIANS array.')
+  );
   console.error(chalk.yellow('Example format:'));
   console.error(
     chalk.grey(`
@@ -120,7 +121,7 @@ GUARDIANS=[
 // Check if any guardians were loaded
 if (CLOUD_GUARDIANS.length === 0) {
   console.error(chalk.red('\n❌ No guardians configured!'));
-  console.error(chalk.yellow('\nPlease configure at least one guardian in your .env file.'));
+  console.error(chalk.yellow('\nPlease configure at least one guardian in your demo.env file.'));
   process.exit(1);
 }
 
