@@ -9,7 +9,7 @@ Related: [Orch Node](https://github.com/GridlockNetwork/orch-node) | [Guardian N
 
 ## Quick Start
 
-Copy and paste these commands to start everything:
+1. Start the Gridlock network infrastructure:
 
 ```sh
 docker network create gridlock-net
@@ -18,16 +18,19 @@ docker compose up
 
 This will start:
 
-- The orchestration node (http://localhost:3000)
+- The orchestration node (http://localhost:5310)
 - Three guardian nodes
 - The database (MongoDB)
 - The peer-to-peer networking layer
 
-In another terminal, run the example script and review the logs from the first terminal for guardian output.
+2. In a new terminal, install and run the CLI:
 
 ```sh
+npm install -g .
 gridlock run-example
 ```
+
+Review the logs from the first terminal for guardian output.
 
 For detailed customization options, local development setup, and advanced configuration, see [Customization and Development Guide](./customization_and_development.md).
 

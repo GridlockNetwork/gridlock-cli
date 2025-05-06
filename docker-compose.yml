@@ -39,7 +39,7 @@ services:
     image: gridlocknetwork/orch-node:latest
     container_name: orch-node
     ports:
-      - "3000:3000"
+      - "5310:5310"
     volumes:
       - ./example.env:/app/.env
     depends_on:
