@@ -6,43 +6,123 @@ import readline from 'readline';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
+import dotenv from 'dotenv';
+
+// Load environment variables
+const envPath = path.join(process.cwd(), '.env');
+if (!fs.existsSync(envPath)) {
+  console.error(chalk.red('\n❌ No .env file found!'));
+  console.error(chalk.yellow('\nPlease create a .env file in the src/example directory.'));
+  console.error(chalk.yellow('You can copy demo.env as a template:'));
+  console.error(chalk.grey('cp src/example/demo.env src/example/.env'));
+  process.exit(1);
+}
+
+dotenv.config({ path: envPath });
 
 // **************************************************************************************
-// CONFIGURATION: Update these values with your own settings
+// CONFIGURATION: Load from environment variables
 // **************************************************************************************
 
 // User details
-const USER_EMAIL = 'gilfoyle@piedpiper.com';
-const USER_PASSWORD = 'password123';
-const USER_NAME = 'Bertram Gilfoyle';
+const USER_EMAIL = process.env.USER_EMAIL as string;
+const USER_PASSWORD = process.env.USER_PASSWORD as string;
+const USER_NAME = process.env.USER_NAME as string;
 
 // Recovery settings
-const RECOVERY_PASSWORD = 'my_new_password123';
+const RECOVERY_PASSWORD = process.env.RECOVERY_PASSWORD as string;
 
 // Blockchain settings
-const BLOCKCHAINS = ['solana'];
+const BLOCKCHAINS = process.env.BLOCKCHAINS?.split(',') || [];
 
-// Cloud Guardian details - Add up to 5 cloud guardians
-const CLOUD_GUARDIANS = [
+// Validate required environment variables
+const requiredEnvVars = {
+  USER_EMAIL,
+  USER_PASSWORD,
+  USER_NAME,
+  RECOVERY_PASSWORD,
+  BLOCKCHAINS,
+};
+
+const missingVars = Object.entries(requiredEnvVars)
+  .filter(([_, value]) => !value)
+  .map(([key]) => key);
+
+if (missingVars.length > 0) {
+  console.error(chalk.red('\n❌ Missing required environment variables:'));
+  missingVars.forEach((varName) => {
+    console.error(chalk.yellow(`- ${varName}`));
+  });
+  console.error(
+    chalk.yellow('\nPlease check your .env file and ensure all required variables are set.')
+  );
+  process.exit(1);
+}
+
+// Type guard for guardian object
+function isValidGuardian(obj: any): obj is IGuardian {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    typeof obj.name === 'string' &&
+    typeof obj.nodeId === 'string' &&
+    typeof obj.networkingPublicKey === 'string' &&
+    typeof obj.e2ePublicKey === 'string'
+  );
+}
+
+// Cloud Guardian details - Load from JSON configuration
+let CLOUD_GUARDIANS: IGuardian[] = [];
+
+try {
+  const guardiansJson = process.env.GUARDIANS;
+  if (!guardiansJson) {
+    throw new Error('No guardians configuration found');
+  }
+
+  const parsedGuardians = JSON.parse(guardiansJson);
+  if (!Array.isArray(parsedGuardians)) {
+    throw new Error('Guardians configuration must be an array');
+  }
+
+  // Validate and transform each guardian
+  CLOUD_GUARDIANS = parsedGuardians.map((guardian) => {
+    if (!isValidGuardian(guardian)) {
+      throw new Error(`Invalid guardian object: ${JSON.stringify(guardian)}`);
+    }
+    return {
+      ...guardian,
+      type: 'cloud',
+      active: true,
+    };
+  });
+} catch (error) {
+  console.error(chalk.red('\n❌ Error loading guardian configuration:'));
+  console.error(
+    chalk.yellow(error instanceof Error ? error.message : 'Invalid guardian configuration')
+  );
+  console.error(chalk.yellow('\nPlease ensure your .env file contains a valid GUARDIANS array.'));
+  console.error(chalk.yellow('Example format:'));
+  console.error(
+    chalk.grey(`
+GUARDIANS=[
   {
-    name: 'Phyllis',
-    nodeId: '831fbff7-40fb-42aa-81f7-51d05c4baf6d',
-    networkingPublicKey: 'UDVXEQ4IDDB3LGP3IYXXPO2LNS6NUGRB6P77UAJKEKIU3AJFGP4CO6SO',
-    e2ePublicKey: '5oIgrRLqZ+Qh/EDM9Bix8pLTyxBc7AW8YeWmLiXtJzM=',
-  },
-  {
-    name: 'Gertrude',
-    nodeId: 'df8957b9-e71d-4c82-9665-f1bbb0fa0faf',
-    networkingPublicKey: 'UBSYF7NQR3L235X73VNVKDNTU3OXANPIUA6LUAD3YSPOO6MWILXKLDIN',
-    e2ePublicKey: '8H30i7+E5xyFcYrCdcDVn7Oq1qjjrz16Cf8K2o/4DVc=',
-  },
-  {
-    name: 'Wilbur',
-    nodeId: 'af99da83-a89c-4acb-9419-31ec906b316f',
-    networkingPublicKey: 'UAMLRKP5SMKLGUFJZQKXCCHQE7AWD42N7UEYGJIE7KX4D7CVMHVIVGKI',
-    e2ePublicKey: 'ndq5On5nnkRHJWpCPSNgtVPsEq4iPJT3yCaB1e+gp2w=',
-  },
-];
+    "name": "GuardianName",
+    "nodeId": "node-id",
+    "networkingPublicKey": "networking-public-key",
+    "e2ePublicKey": "e2e-public-key"
+  }
+]`)
+  );
+  process.exit(1);
+}
+
+// Check if any guardians were loaded
+if (CLOUD_GUARDIANS.length === 0) {
+  console.error(chalk.red('\n❌ No guardians configured!'));
+  console.error(chalk.yellow('\nPlease configure at least one guardian in your .env file.'));
+  process.exit(1);
+}
 
 // Process command line arguments
 // Check if --help or -h flag is provided
