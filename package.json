@@ -1,6 +1,6 @@
 {
   "name": "gridlock-cli",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Gridlock CLI",
   "main": "index.js",
   "type": "module",
